@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sync"
 )
 
 // Instantiate a client with credentials bound
@@ -57,21 +56,27 @@ func (c *BeaconClient) GetBeaconById(name string) (*proximitybeacon.Beacon, erro
 }
 
 func (c *BeaconClient) GetBeaconsByNames(bNames []string) []*proximitybeacon.Beacon {
-	var wg sync.WaitGroup
 	length := len(bNames)
-	wg.Add(length)
+	type Wrapper struct {
+		I   int
+		Ptr *proximitybeacon.Beacon
+		Err error
+	}
+	ch := make(chan *Wrapper, length)
 	results := make([]*proximitybeacon.Beacon, length)
 	// process concurently in goroutines
 	for i, name := range bNames {
 		go func(i int) {
-			beacon, _ := c.GetBeaconById(name)
-			// TBD: add error handling, possibly pushing errs to its own slice
-			results[i] = beacon
-			wg.Done()
+			beacon, err := c.GetBeaconById(name)
+			ch <- &Wrapper{i, beacon, err}
 		}(i)
 	}
 
-	wg.Wait()
+	for i := 0; i < length; i++ {
+		wrapper := <-ch
+		// TBD: add error handling
+		results[wrapper.I] = wrapper.Ptr
+	}
 
 	return results
 }
