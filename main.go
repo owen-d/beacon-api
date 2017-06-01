@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/owen-d/beacon/api"
 	"github.com/owen-d/beacon/config"
-	"google.golang.org/api/proximitybeacon/v1beta1"
 	"log"
 	"os"
 	"path/filepath"
@@ -39,12 +38,18 @@ func loadConf() *config.JsonConfig {
 
 func main() {
 	conf := loadConf()
-	client := api.JWTConfigFromJSON(conf.GCloudConfigPath, conf.Scope)
-	svc, err := proximitybeacon.New(client)
+	httpClient := api.JWTConfigFromJSON(conf.GCloudConfigPath, conf.Scope)
+	svc, err := api.NewBeaconClient(httpClient)
 	safeExit(err)
-	res, e := svc.Beacons.List().Do()
-	safeExit(e)
+	res, err := svc.GetOwnedBeaconNames()
+	safeExit(err)
+	bNames := make([]string, len(res.Beacons))
 	for _, b := range res.Beacons {
-		fmt.Printf("bk: %+v\n", b.BeaconName)
+		bNames = append(bNames, b.BeaconName)
+	}
+
+	beacons := svc.GetBeaconsByNames(bNames)
+	for _, b := range beacons {
+		fmt.Printf("beacon: %v", b)
 	}
 }
