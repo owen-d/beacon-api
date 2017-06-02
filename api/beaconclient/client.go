@@ -1,4 +1,4 @@
-package api
+package beaconclient
 
 import (
 	"encoding/base64"
@@ -38,6 +38,15 @@ func JWTConfigFromJSON(fPath, scope string) *http.Client {
 	client := conf.Client(oauth2.NoContext)
 
 	return client
+}
+
+type Client interface {
+	GetOwnedBeaconNames() (*proximitybeacon.ListBeaconsResponse, error)
+	GetBeaconById(name string) (*proximitybeacon.Beacon, error)
+	GetBeaconsByNames(bNames []string) []*proximitybeacon.Beacon
+	GetAttachmentsForBeacon(name string) ([]*proximitybeacon.BeaconAttachment, error)
+	CreateAttachment(beaconName string, attachmentData *AttachmentData) (*proximitybeacon.BeaconAttachment, error)
+	BatchDeleteAttachments(beaconName string) (int64, error)
 }
 
 type BeaconClient struct {

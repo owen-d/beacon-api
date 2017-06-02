@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/owen-d/beacon-api/api"
+	"github.com/owen-d/beacon-api/api/beaconclient"
+	"github.com/owen-d/beacon-api/api/route"
 	"github.com/owen-d/beacon-api/config"
 	"log"
 	"os"
@@ -38,22 +39,22 @@ func loadConf() *config.JsonConfig {
 
 func main() {
 	conf := loadConf()
-	httpClient := api.JWTConfigFromJSON(conf.GCloudConfigPath, conf.Scope)
-	svc, err := api.NewBeaconClient(httpClient)
+	httpClient := beaconclient.JWTConfigFromJSON(conf.GCloudConfigPath, conf.Scope)
+	svc, err := beaconclient.NewBeaconClient(httpClient)
 	safeExit(err)
 
 	beaconCycle(svc)
 	// listNamespaces(svc)
 }
 
-func listNamespaces(svc *api.BeaconClient) {
+func listNamespaces(svc *beaconclient.BeaconClient) {
 	res, _ := svc.Svc.Namespaces.List().Do()
 	for _, ns := range res.Namespaces {
 		fmt.Printf("ns: %+v\n", ns)
 	}
 }
 
-func beaconCycle(svc *api.BeaconClient) {
+func beaconCycle(svc *beaconclient.BeaconClient) {
 	// get list of beacon names
 	res, err := svc.GetOwnedBeaconNames()
 	safeExit(err)
@@ -68,7 +69,7 @@ func beaconCycle(svc *api.BeaconClient) {
 	fmt.Printf("deleted %v\n", numDeleted)
 
 	// add new attachment to beacon
-	newAttachment := api.AttachmentData{
+	newAttachment := beaconclient.AttachmentData{
 		Title: "Welcome home, qtpi",
 		Url:   "https://www.eff.org",
 	}
