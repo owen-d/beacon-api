@@ -5,19 +5,6 @@ import (
 	"net/http"
 )
 
-// struct for programatically constructing a route handler.
-type HandlerAnnotation struct {
-	Method string
-	Fn     *func(http.ResponseWriter, *http.Request)
-}
-
-type PathAnnotation struct {
-	Path      string
-	Router    *mux.Router
-	SubRoutes []*PathAnnotation
-	Handlers  []*HandlerAnnotation
-}
-
 // We want a couple primitives for routes: Beacons, Messages(backed by attachments), Schedules.
 // These will exist independently so we can detach & reattach them to each other:
 // A beacon is just a beacon, but Messages can be attached to 1 or more beacons and
@@ -28,7 +15,6 @@ var (
 	RootRouter = PathAnnotation{
 		// note: we don't add a Path property to the root router;
 		// it will be mounted via http.Handle("/", rootRouter)
-		Router: &mux.NewRouter(),
 		SubRoutes: []*PathAnnotation{
 			&BeaconRouter,
 		},
@@ -41,7 +27,7 @@ var (
 		Handlers: BeaconHandlers,
 	}
 	BeaconIdRouter = PathAnnotation{
-		Path:     "{id}",
+		Path:     "{beaconId}",
 		Handlers: BeaconByIdHandlers,
 	}
 )
@@ -65,3 +51,39 @@ var (
 		},
 	}
 )
+
+// struct for programatically constructing a route handler.
+type HandlerAnnotation struct {
+	Method string
+	Fn     *func(http.ResponseWriter, *http.Request)
+}
+
+type PathAnnotation struct {
+	Path      string
+	Router    *mux.Router
+	SubRoutes []*PathAnnotation
+	Handlers  []*HandlerAnnotation
+}
+
+func (annotation *PathAnnotation) build(rootRouter *mux.Router) {
+	sr := rootRouter.PathPrefix(annotation.Path).Subrouter()
+	annotation.Router = sr
+	for _, handler := range annotation.Handlers {
+		sr.HandleFunc("/", *handler.Fn).
+			Methods(handler.Method)
+	}
+
+	for _, route := range annotation.SubRoutes {
+		route.build(sr)
+	}
+
+}
+
+func BuildRouter(root *PathAnnotation) *mux.Router {
+	// base case, must instantiate a new router
+	root.Router = mux.NewRouter()
+	// recursive call to build all deps
+	root.build(root.Router)
+	return root.Router
+
+}
