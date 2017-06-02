@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/owen-d/beacon/api"
-	"github.com/owen-d/beacon/config"
+	"github.com/owen-d/beacon-api/api"
+	"github.com/owen-d/beacon-api/config"
 	"log"
 	"os"
 	"path/filepath"
 )
 
 var (
-	defaultConfigPath = filepath.Join(os.Getenv("HOME"), "go/src/github.com/owen-d/beacon/config.json")
+	defaultConfigPath = filepath.Join(os.Getenv("GOPATH"), "src/github.com/owen-d/beacon-api/config.json")
 )
 
 func safeExit(e error) {
@@ -70,7 +70,7 @@ func beaconCycle(svc *api.BeaconClient) {
 	// add new attachment to beacon
 	newAttachment := api.AttachmentData{
 		Title: "Welcome home, qtpi",
-		Url:   "https://www.google.com/?q=qtpi",
+		Url:   "https://www.eff.org",
 	}
 
 	fmt.Println("attempting to attach to beacon:", bNames[0], "\n")
