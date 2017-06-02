@@ -41,15 +41,46 @@ func main() {
 	httpClient := api.JWTConfigFromJSON(conf.GCloudConfigPath, conf.Scope)
 	svc, err := api.NewBeaconClient(httpClient)
 	safeExit(err)
+
+	beaconCycle(svc)
+	// listNamespaces(svc)
+}
+
+func listNamespaces(svc *api.BeaconClient) {
+	res, _ := svc.Svc.Namespaces.List().Do()
+	for _, ns := range res.Namespaces {
+		fmt.Printf("ns: %+v\n", ns)
+	}
+}
+
+func beaconCycle(svc *api.BeaconClient) {
+	// get list of beacon names
 	res, err := svc.GetOwnedBeaconNames()
 	safeExit(err)
-	bNames := make([]string, len(res.Beacons))
+	bNames := make([]string, 0, len(res.Beacons))
+
 	for _, b := range res.Beacons {
 		bNames = append(bNames, b.BeaconName)
 	}
 
-	beacons := svc.GetBeaconsByNames(bNames)
-	for _, b := range beacons {
-		fmt.Printf("beacon: %v", b)
+	// delete old attachments on beacon
+	numDeleted, _ := svc.BatchDeleteAttachments(bNames[0])
+	fmt.Printf("deleted %v\n", numDeleted)
+
+	// add new attachment to beacon
+	newAttachment := api.AttachmentData{
+		Title: "Welcome home, qtpi",
+		Url:   "https://www.google.com/?q=qtpi",
 	}
+
+	fmt.Println("attempting to attach to beacon:", bNames[0], "\n")
+	attachment, err := svc.CreateAttachment(bNames[0], &newAttachment)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("created attachment:\n%+v\n", attachment)
+
+	fmt.Printf("done")
+
 }

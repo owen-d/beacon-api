@@ -1,12 +1,18 @@
 package api
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/proximitybeacon/v1beta1"
 	"io/ioutil"
 	"log"
 	"net/http"
+)
+
+const (
+	googleNamespacedType = "com.google.nearby/en"
 )
 
 // Instantiate a client with credentials bound
@@ -79,4 +85,44 @@ func (c *BeaconClient) GetBeaconsByNames(bNames []string) []*proximitybeacon.Bea
 	}
 
 	return results
+}
+
+func (c *BeaconClient) GetAttachmentsForBeacon(name string) ([]*proximitybeacon.BeaconAttachment, error) {
+	res, err := c.Svc.Beacons.Attachments.List(name).NamespacedType(googleNamespacedType).Do()
+	var results []*proximitybeacon.BeaconAttachment
+	if err != nil {
+		return results, err
+	}
+
+	return append(results, res.Attachments...), nil
+}
+
+// TBD: parameterize namespacedType
+func (c *BeaconClient) CreateAttachment(beaconName string, attachmentData *AttachmentData) (*proximitybeacon.BeaconAttachment, error) {
+	data := attachmentData.encode()
+	newAttachment := proximitybeacon.BeaconAttachment{
+		Data:           data,
+		NamespacedType: googleNamespacedType,
+	}
+
+	return c.Svc.Beacons.Attachments.Create(beaconName, &newAttachment).Do()
+}
+
+// TBD: parameterize namespacedType
+func (c *BeaconClient) BatchDeleteAttachments(beaconName string) (int64, error) {
+	res, err := c.Svc.Beacons.Attachments.BatchDelete(beaconName).NamespacedType(googleNamespacedType).Do()
+	if err != nil {
+		return 0, err
+	}
+	return res.NumDeleted, nil
+}
+
+type AttachmentData struct {
+	Title string `json:"title"`
+	Url   string `json:"url"`
+}
+
+func (a *AttachmentData) encode() string {
+	jData, _ := json.Marshal(a)
+	return base64.StdEncoding.EncodeToString(jData)
 }
