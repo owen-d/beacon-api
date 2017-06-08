@@ -2,6 +2,7 @@ package route
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/urfave/negroni"
 	"net/http"
 )
 
@@ -55,7 +56,17 @@ var (
 // struct for programatically constructing a route handler.
 type HandlerAnnotation struct {
 	Method string
-	Fn     *func(http.ResponseWriter, *http.Request)
+	Fns    []func(http.ResponseWriter, *http.Request)
+}
+
+// map middleware to negroni handlers
+func (a *HandlerAnnotation) build() []negroni.Handler {
+	wrapped := make([]negroni.Handler, len(a.Fns))
+	for _, fn := range a.Fns {
+		wrapped = append(wrapped, negroni.Wrap(fn))
+	}
+
+	return wrapped
 }
 
 type PathAnnotation struct {
@@ -66,13 +77,19 @@ type PathAnnotation struct {
 }
 
 func (annotation *PathAnnotation) build(rootRouter *mux.Router) {
+	// build a new router from the path prefix, upon which all subsequent method routs will be mounted
 	sr := rootRouter.PathPrefix(annotation.Path).Subrouter()
-	annotation.Router = sr
+	// annotation.Router = sr
+
+	// instantiate a new router per method, & attach a negroni instance from the middleware slice
 	for _, handler := range annotation.Handlers {
-		sr.HandleFunc("/", *handler.Fn).
-			Methods(handler.Method)
+		methodSubrouter := sr.Methods(handler.Method).Subrouter()
+
+		n := negroni.New(handler.build()...)
+		methodSubrouter.Handle("/", n)
 	}
 
+	//recursively build subroutes
 	for _, route := range annotation.SubRoutes {
 		route.build(sr)
 	}
