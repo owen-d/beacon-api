@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/owen-d/beacon-api/api/beaconclient"
-	"github.com/owen-d/beacon-api/api/route"
 	"github.com/owen-d/beacon-api/config"
+	"github.com/owen-d/beacon-api/lib/beaconclient"
+	"github.com/owen-d/beacon-api/lib/route"
 	"log"
 	"net/http"
 	"os"
