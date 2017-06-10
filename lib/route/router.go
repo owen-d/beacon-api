@@ -27,7 +27,7 @@ type Router struct {
 
 func (r *Router) build(rootRouter *mux.Router) {
 	// build a new router from the path prefix, upon which all subsequent method routs will be mounted
-	r.Router = rootRouter.PathPrefix(r.Path).Subrouter()
+	r.Router = rootRouter.PathPrefix(r.Path).Subrouter().StrictSlash(true)
 
 	// instantiate a new negroni middleware manageer,
 	// attach all the middleware functions to it, & bind those functions to a method on a subrouter
