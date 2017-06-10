@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	"fmt"
+	"encoding/json"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/route"
+	"google.golang.org/api/proximitybeacon/v1beta1"
 	"net/http"
 )
 
@@ -15,10 +16,20 @@ type BeaconMethods struct {
 	Client beaconclient.Client
 }
 
+type beaconResponse struct {
+	Beacons []*proximitybeacon.Beacon `json:"beacons"`
+}
+
 func (self *BeaconMethods) GetBeacons(rw http.ResponseWriter, r *http.Request) {
 	res, _ := self.Client.GetOwnedBeaconNames()
 	beacons := res.Beacons
-	fmt.Printf("found beacons:\n%+v", beacons)
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+
+	data, _ := json.Marshal(beaconResponse{beacons})
+
+	rw.Write(data)
 }
 
 func (self *BeaconMethods) Router() *route.Router {
