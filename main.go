@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/owen-d/beacon-api/api"
 	"github.com/owen-d/beacon-api/config"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
-	"github.com/owen-d/beacon-api/lib/route"
 	"log"
 	"net/http"
 	"os"
@@ -39,12 +39,19 @@ func loadConf() *config.JsonConfig {
 }
 
 func main() {
-	// conf := loadConf()
-	// httpClient := beaconclient.JWTConfigFromJSON(conf.GCloudConfigPath, conf.Scope)
-	// svc, err := beaconclient.NewBeaconClient(httpClient)
-	// safeExit(err)
+	// init w/ google configs
+	conf := loadConf()
+	httpClient := beaconclient.JWTConfigFromJSON(conf.GCloudConfigPath, conf.Scope)
+	svc, err := beaconclient.NewBeaconClient(httpClient)
+	safeExit(err)
 
-	RouteTester()
+	// inject necessary backend (google api svc) into env
+	env := api.Env{svc}
+
+	// build router from bound env
+	router := env.Init()
+
+	http.ListenAndServe(":8080", router.Router)
 
 }
 
@@ -84,35 +91,5 @@ func beaconCycle(svc *beaconclient.BeaconClient) {
 	fmt.Printf("created attachment:\n%+v\n", attachment)
 
 	fmt.Printf("done")
-
-}
-
-func RouteTester() {
-	method1 := func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		fmt.Printf("Hit method1")
-		next(rw, r)
-	}
-	method2 := func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		fmt.Printf("Hit method2")
-		http.Error(rw, "note", 400)
-	}
-
-	//break
-	ha := route.HandlerAnnotation{
-		Method: "GET",
-		Fns:    []func(http.ResponseWriter, *http.Request, http.HandlerFunc){method1, method2},
-	}
-	sr := route.PathAnnotation{
-		Path:     "/test",
-		Handlers: []*route.HandlerAnnotation{&ha},
-	}
-	a1 := route.PathAnnotation{
-		Path:      "/",
-		SubRoutes: []*route.PathAnnotation{&sr},
-	}
-
-	r := route.BuildRouter(&a1)
-
-	log.Fatal(http.ListenAndServe(":8080", r))
 
 }
