@@ -10,13 +10,16 @@ import (
 
 type BeaconRoutes interface {
 	GetBeacons(http.ResponseWriter, *http.Request)
+	// RegisterBeacons(http.ResponseWriter, *http.Request)
+	// DeregisterBeacons(http.ResponseWriter, *http.Request)
+	// UpdateBeacons(http.ResponseWriter, *http.Request)
 }
 
 type BeaconMethods struct {
 	Client beaconclient.Client
 }
 
-type beaconResponse struct {
+type BeaconResponse struct {
 	Beacons []*proximitybeacon.Beacon `json:"beacons"`
 }
 
@@ -27,7 +30,7 @@ func (self *BeaconMethods) GetBeacons(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
 
-	data, _ := json.Marshal(beaconResponse{beacons})
+	data, _ := json.Marshal(BeaconResponse{beacons})
 
 	rw.Write(data)
 }

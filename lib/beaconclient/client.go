@@ -63,7 +63,7 @@ func NewBeaconClient(client *http.Client) (*BeaconClient, error) {
 }
 
 func (c *BeaconClient) GetOwnedBeaconNames() (*proximitybeacon.ListBeaconsResponse, error) {
-	return c.Svc.Beacons.List().Do()
+	return c.Svc.Beacons.List().Q("status:active").Do()
 }
 
 func (c *BeaconClient) GetBeaconById(name string) (*proximitybeacon.Beacon, error) {
