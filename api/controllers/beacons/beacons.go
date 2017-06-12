@@ -1,4 +1,4 @@
-package controllers
+package beaconscontroller
 
 import (
 	"encoding/json"
