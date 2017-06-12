@@ -9,6 +9,5 @@ type Client interface {
 	// Beacons
 	// Users
 	// Messages
-	// Attachments
 	// Schedule
 }
