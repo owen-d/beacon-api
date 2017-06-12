@@ -11,7 +11,7 @@ type Env struct {
 }
 
 func (self *Env) Init() *route.Router {
-	beacons := beaconscontroller.BeaconMethods{self.Beaconclient}
+	beacons := beacons.BeaconMethods{self.Beaconclient}
 	r := beacons.Router()
 	return route.BuildRouter(r)
 }
