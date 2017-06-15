@@ -1,17 +1,12 @@
-This way, we can enforce (via static column @ partition) 1 deployment per beacon.
-Updates will automatically invalidate older deployments for the beacon.
-The materialized view will give us eventual consistency for efficiently fetching beacons related
-to a deployment. 
+/*
+  This way, we can enforce (via static column @ partition) 1 deployment per beacon.
+  Updates will automatically invalidate older deployments for the beacon.
+  The materialized view will give us eventual consistency for efficiently fetching beacons related
+  to a deployment. 
+  remember to use `cqlsh --cqlversion="3.4.4"`
+*/
 
-remember to use `cqlsh --cqlversion="3.4.4"`
 
-----start
-
-CREATE KEYSPACE IF NOT EXISTS bkn
-  WITH REPLICATION = { 
-   'class' : 'SimpleStrategy', 
-   'replication_factor' : 2 
-  };
 
 CREATE TABLE IF NOT EXISTS bkn.beacons (
   user_id uuid,
@@ -29,12 +24,16 @@ PRIMARY KEY ((user_id, deploy_name), beacon_name);
 
 // populate some data
 
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a1', null);
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a2', 'dep1');
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a3', 'dep1');
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a4', 'dep1');
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a5', 'dep1');
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a6', 'dep1');
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a7', 'dep2');
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a8', 'dep2');
-INSERT INTO beacons (user_id, beacon_name, deploy_name) VALUES (0, 'a9', 'dep2');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a2', null);
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a3', null);
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a4', 'dep1');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a5', 'dep1');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a6', 'dep1');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a7', 'dep1');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a8', 'dep2');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a9', 'dep2');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a10', 'dep2');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a11', 'dep2');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a12', 'dep3');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a13', 'dep3');
+INSERT INTO bkn.beacons (user_id, beacon_name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a14', 'dep3');
