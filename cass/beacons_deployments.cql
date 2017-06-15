@@ -1,17 +1,3 @@
-```
-{
-  user_id,
-  deploy_name,
-  target <UDT<target>> + 'st,
-  message <UDT<msg>> + 'st,
-  beacon_name
-}
-
-((user_id, beacon_name), deploy_name)
-// materialized view
-((user_id, deploy_name), beacon_name)
-```
-
 This way, we can enforce (via static column @ partition) 1 deployment per beacon.
 Updates will automatically invalidate older deployments for the beacon.
 The materialized view will give us eventual consistency for efficiently fetching beacons related
@@ -28,7 +14,7 @@ CREATE KEYSPACE IF NOT EXISTS bkn
   };
 
 CREATE TABLE IF NOT EXISTS bkn.beacons (
-  user_id int,
+  user_id uuid,
   deploy_name varchar,
   beacon_name varchar,
   PRIMARY KEY ((user_id, beacon_name))

@@ -11,9 +11,15 @@ type JSONValidator interface {
 }
 
 type RequestErr struct {
-	Message string `json:"message"`
 	status  int    `json:-`
+	Message string `json:"message"`
 }
 
 func (self *RequestErr) Flush(rw http.ResponseWriter) {
+	rw.WriteHeader(self.status)
+	if self.Message == nil {
+		self.Message = http.StatusText(self.status)
+	}
+	jsonData, _ := json.Marshal(self)
+	rw.Write(jsonData)
 }

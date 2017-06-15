@@ -30,11 +30,18 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 	jsonBody, readErr := ioutil.ReadAll(r.Body)
 	if readErr != nil {
 		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	deployment := &Deployment{}
+	unmarshalErr := json.Unmarshal(jsonBody, deployment)
+	if unmarshalErr {
+		validator.RequestErr{400}.Flush(rw)
 	}
 	// ensure message, schedule exist
 
 	// insert deployment to cassandra (acts as upsert)
-	// for each affected beacon, update it, aetting cur_deployment to new deployment, & delete any old deployment references for that beacon.
+	// for each affected beacon, update it, setting cur_deployment to new deployment, & delete any old deployment references for that beacon.
 
 	// iterate over affected beacons, removing old attachment & creating new attachment
 	// self.postAttachments()
