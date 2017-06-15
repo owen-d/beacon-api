@@ -24,7 +24,7 @@ remember to use `cqlsh --cqlversion="3.4.4"`
 CREATE KEYSPACE IF NOT EXISTS bkn
   WITH REPLICATION = { 
    'class' : 'SimpleStrategy', 
-   'replication_factor' : 1 
+   'replication_factor' : 2 
   };
 
 CREATE TABLE IF NOT EXISTS bkn.beacons (

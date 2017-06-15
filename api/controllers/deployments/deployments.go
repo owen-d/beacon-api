@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/route"
+	"github.com/owen-d/beacon-api/lib/validator"
 	"google.golang.org/api/proximitybeacon/v1beta1"
+	"io/ioutil"
 	"net/http"
 )
 
 type DeploymentRoutes interface {
+	ValidateDeployment(http.ResponseWriter, *http.Request)
 	PostDeployment(http.ResponseWriter, *http.Request)
 }
 
@@ -16,8 +19,18 @@ type DeploymentMethods struct {
 	BeaconClient beaconclient.Client
 }
 
+type Deployment struct {
+	UserId      int
+	DeployName  string
+	BeaconNames []string
+}
+
 func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Request) {
 	// validate deployment
+	jsonBody, readErr := ioutil.ReadAll(r.Body)
+	if readErr != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+	}
 	// ensure message, schedule exist
 
 	// insert deployment to cassandra (acts as upsert)
