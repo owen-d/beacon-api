@@ -1,5 +1,5 @@
-/*
-  This way, we can enforce (via static column @ partition) 1 deployment per beacon.
+  /*
+  Note: we no longer use static column @ partition, but rather just user userid/bname as primary key. This way, we can enforce 1 deployment per beacon.
   Updates will automatically invalidate older deployments for the beacon.
   The materialized view will give us eventual consistency for efficiently fetching beacons related
   to a deployment. 
