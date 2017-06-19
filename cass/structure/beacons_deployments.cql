@@ -11,13 +11,13 @@
 CREATE TABLE IF NOT EXISTS bkn.beacons (
   user_id uuid,
   deploy_name varchar,
-  beacon_name varchar,
-  PRIMARY KEY ((user_id, beacon_name))
+  name varchar,
+  PRIMARY KEY ((user_id, name))
 );
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS bkn.beacon_deployments
-AS SELECT user_id, deploy_name, beacon_name
+AS SELECT user_id, deploy_name, name
 FROM bkn.beacons
-WHERE user_id IS NOT NULL AND deploy_name IS NOT NULL AND beacon_name IS NOT NULL
-PRIMARY KEY ((user_id, deploy_name), beacon_name);
+WHERE user_id IS NOT NULL AND deploy_name IS NOT NULL AND name IS NOT NULL
+PRIMARY KEY ((user_id, deploy_name), name);
 

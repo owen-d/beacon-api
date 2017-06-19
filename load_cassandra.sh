@@ -8,7 +8,7 @@ KEYSPACE_STR="$(cat <<EOF
 CREATE KEYSPACE IF NOT EXISTS bkn
 WITH REPLICATION = { 
     'class' : 'SimpleStrategy', 
-    'replication_factor' : 2 
+    'replication_factor' : 1 
 };
 EOF
 )"

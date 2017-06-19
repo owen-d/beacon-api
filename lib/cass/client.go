@@ -23,7 +23,7 @@ type User struct {
 type Beacon struct {
 	UserId     gocql.UUID `cql:"user_id"`
 	DeployName string     `cql:"deploy_name"`
-	BeaconName string     `cql:"beacon_name"`
+	Name       string     `cql:"name"`
 }
 
 type Message struct {
@@ -113,12 +113,71 @@ func (self *CassClient) FetchUser(u *User) (*User, error) {
 
 // Beacons ------------------------------------------------------------------------------
 
-func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult {}
+func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult {
+	template := `INSERT INTO beacons (user_id, name, deploy_name) VALUES (?, ?, ?)`
+
+	providedBatch := (batch != nil)
+	if !providedBatch {
+		batch = gocql.NewBatch(gocql.LoggedBatch)
+	}
+
+	res := UpsertResult{
+		Batch: batch,
+	}
+
+	for _, bkn := range beacons {
+		cmd := []interface{}{
+			template,
+			bkn.UserId,
+			bkn.Name,
+			bkn.DeployName,
+		}
+
+		batch.Query(cmd...)
+	}
+
+	// If a batch was provided, we do not need to execute the query, it may be done as part of a later transaction.
+	if !providedBatch {
+		res.Err = self.Sess.ExecuteBatch(batch)
+	}
+
+	return res
+}
 
 // UpdateBeacons
 // Note: UpdateBeacons must use an if exists clause to prevent errors like inserting a beacon which a user does not own.
-func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult {}
-func (self *CassClient) FetchBeacons(beacons []*Beacon) (*Beacon, error)                  {}
+func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult {
+	template := `UPDATE beacons SET deploy_name = ? WHERE user_id = ? AND name = ? IF EXISTS`
+
+	providedBatch := (batch != nil)
+	if !providedBatch {
+		batch = gocql.NewBatch(gocql.LoggedBatch)
+	}
+
+	res := UpsertResult{
+		Batch: batch,
+	}
+
+	for _, bkn := range beacons {
+		cmd := []interface{}{
+			template,
+			bkn.DeployName,
+			bkn.UserId,
+			bkn.Name,
+		}
+
+		batch.Query(cmd...)
+	}
+
+	// If a batch was provided, we do not need to execute the query, it may be done as part of a later transaction.
+	if !providedBatch {
+		res.Err = self.Sess.ExecuteBatch(batch)
+	}
+
+	return res
+
+}
+func (self *CassClient) FetchBeacons(beacons []*Beacon) (*Beacon, error) {}
 
 // Messages ------------------------------------------------------------------------------
 
