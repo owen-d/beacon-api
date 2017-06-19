@@ -2,6 +2,7 @@
 package cass
 
 import (
+	"errors"
 	"github.com/gocql/gocql"
 )
 
@@ -16,7 +17,7 @@ type Client interface {
 
 type User struct {
 	Id    gocql.UUID `cql:"id"`
-	email string     `cql:"email"`
+	Email string     `cql:"email"`
 }
 
 type Beacon struct {
@@ -58,13 +59,57 @@ type CassClient struct {
 // UpsertResult is a wrapper type, including a possible batch & error. It can be used as the return value for batched or unbatched DML statements
 type UpsertResult struct {
 	Batch *gocql.Batch
-	err   error
+	Err   error
+}
+
+// Instantiation
+
+func Connect(cluster *gocql.ClusterConfig, keyspace string) (*CassClient, error) {
+	cluster.Keyspace = keyspace
+	session, connectErr := cluster.CreateSession()
+	if connectErr != nil {
+		return nil, connectErr
+	}
+
+	return *CassClient{Sess: session}
 }
 
 // Users ------------------------------------------------------------------------------
 
-func (self *CassClient) CreateUser(u *User, batch *gocql.Batch) UpsertResult {}
-func (self *CassClient) FetchUser(u *User, batch *gocql.Batch)               {}
+func (self *CassClient) CreateUser(u *User, batch *gocql.Batch) UpsertResult {
+	args := []interface{}{
+		`INSERT INTO users (id, email) VALUES (?, ?)`,
+		gocql.RandomUUID(),
+		u.Email,
+	}
+
+	if batch != nil {
+		batch.Query(args...)
+		return UpsertResult{Batch: batch, Err: nil}
+	} else {
+		return UpsertResult{
+			Batch: nil,
+			Err:   self.Sess.Query(args...).Exec(),
+		}
+	}
+
+}
+
+func (self *CassClient) FetchUser(u *User) (*User, error) {
+	// instantiate user struct for unmarshalling
+	matchedUser := &User{}
+	if u.Id {
+		err := self.Sess.Query(`Select id, email FROM users WHERE id = ?`, u.Id).Scan(&matchedUser.Id, &matchedUser.Email)
+	} else {
+		err := self.Sess.Query(`Select id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(&matchedUser.Id, &matchedUser.Email)
+	}
+
+	if matchedUser.Id {
+		return matchedUser, nil
+	} else {
+		return nil, errors.New("no matched user")
+	}
+}
 
 // Beacons ------------------------------------------------------------------------------
 
@@ -142,5 +187,8 @@ func (self *CassClient) PostDeployment(deployment *Deployment) UpsertResult {
 	return res
 }
 
-// FetchDeployment uses the deployments materialized view to gather a list of beacons associated with a deployment.
-// func FetchDeployment() {}
+// FetchDeploymentBeacons uses the deployments materialized view to gather a list of beacons associated with a deployment.
+// func FetchDeploymentBeacons() {}
+
+// FetchDeploymentMetadata fetches the metadata record for a deployment
+// func FetchDeploymentMetadata() {}
