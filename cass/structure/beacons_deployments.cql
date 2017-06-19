@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS bkn.beacons (
   PRIMARY KEY ((user_id, beacon_name))
 );
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS bkn.deployments
+CREATE MATERIALIZED VIEW IF NOT EXISTS bkn.beacon_deployments
 AS SELECT user_id, deploy_name, beacon_name
 FROM bkn.beacons
 WHERE user_id IS NOT NULL AND deploy_name IS NOT NULL AND beacon_name IS NOT NULL
