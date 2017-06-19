@@ -99,9 +99,9 @@ func (self *CassClient) FetchUser(u *User) (*User, error) {
 	// instantiate user struct for unmarshalling
 	matchedUser := &User{}
 	if u.Id {
-		err := self.Sess.Query(`Select id, email FROM users WHERE id = ?`, u.Id).Scan(&matchedUser.Id, &matchedUser.Email)
+		err := self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(&matchedUser.Id, &matchedUser.Email)
 	} else {
-		err := self.Sess.Query(`Select id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(&matchedUser.Id, &matchedUser.Email)
+		err := self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(&matchedUser.Id, &matchedUser.Email)
 	}
 
 	if matchedUser.Id {
@@ -144,8 +144,7 @@ func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) Ups
 	return res
 }
 
-// UpdateBeacons
-// Note: UpdateBeacons must use an if exists clause to prevent errors like inserting a beacon which a user does not own.
+// UpdateBeacons must use an if exists clause to prevent errors like inserting a beacon which a user does not own.
 func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult {
 	template := `UPDATE beacons SET deploy_name = ? WHERE user_id = ? AND name = ? IF EXISTS`
 
@@ -177,7 +176,21 @@ func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) Ups
 	return res
 
 }
-func (self *CassClient) FetchBeacons(beacons []*Beacon) (*Beacon, error) {}
+
+// FetchBeacons takes a slice of Beacons with primary keys filled out, fetches the remaining data, & updates the structs
+func (self *CassClient) FetchBeacons(beacons []*Beacon) ([]*Beacon, error) {
+
+	for _, bkn := range beacons {
+		cmd := []interface{}{
+			`SELECT deploy_name FROM beacons WHERE user_id = ? AND name = ?`,
+			bkn.UserId,
+			bkn.Name,
+		}
+
+		// fetch asynchronously. need to coordinate errors & when finished
+		// return self.Sess.Query(cmd...).Scan(&bkn.DeployName)
+	}
+}
 
 // Messages ------------------------------------------------------------------------------
 
