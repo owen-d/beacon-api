@@ -177,19 +177,21 @@ func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) Ups
 
 }
 
-// FetchBeacons takes a slice of Beacons with primary keys filled out, fetches the remaining data, & updates the structs
-func (self *CassClient) FetchBeacons(beacons []*Beacon) ([]*Beacon, error) {
-
-	for _, bkn := range beacons {
-		cmd := []interface{}{
-			`SELECT deploy_name FROM beacons WHERE user_id = ? AND name = ?`,
-			bkn.UserId,
-			bkn.Name,
-		}
-
-		// fetch asynchronously. need to coordinate errors & when finished
-		// return self.Sess.Query(cmd...).Scan(&bkn.DeployName)
+// FetchBeacons takes a slice of Beacons with primary keys defined, fetches the remaining data, & updates the structs
+func (self *CassClient) FetchBeacon(bkn *Beacon) (*Beacon, error) {
+	resBkn := Beacon{
+		UserId: bkn.UserId,
+		Name:   bkn.Name,
 	}
+
+	cmd := []interface{}{
+		`SELECT deploy_name FROM beacons WHERE user_id = ? AND name = ?`,
+		bkn.UserId,
+		bkn.Name,
+	}
+
+	err := self.Sess.Query(cmd...).Scan(&resBkn.DeployName)
+	return &resBkn, err
 }
 
 // Messages ------------------------------------------------------------------------------
