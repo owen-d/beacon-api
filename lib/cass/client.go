@@ -259,10 +259,38 @@ func (self *CassClient) addOrRemoveMessageDeployments(m *Message, changes *Messa
 
 }
 
-func (self *CassClient) FetchMessage(m *Message, batch *gocql.Batch) (*Message, error) {}
+func (self *CassClient) FetchMessage(m *Message) (*Message, error) {
+	resMsg := Message{}
+	args := []interface{}{
+		`SELECT user_id, name, title, url, lang, deployments FROM messages WHERE user_id = ? AND name = ?`,
+		m.UserId,
+		m.Name,
+	}
+
+	err := self.Sess.Query(args...).Scan(resMsg.UserId, resMsg.Name, resMsg.Title, resMsg.Url, resMsg.Lang, resMsg.Deployments)
+	return resMsg, err
+}
 
 // DeploymentMetadata
 func (self *CassClient) PostDeploymentMetadata(md *DeploymentMetadata, batch *gocql.Batch) UpsertResult {
+	template := `INSERT INTO deployments_metadata (user_id, deploy_name, message_name) VALUES (?, ?, ?)`
+	args := []interface{}{
+		template,
+		md.UserId,
+		md.DeployName,
+		md.MessageName,
+	}
+
+	if batch != nil {
+		batch.Query(args...)
+		return UpsertResult{Batch: batch, Err: nil}
+	} else {
+		return UpsertResult{
+			Batch: nil,
+			Err:   self.Sess.Query(args...).Exec(),
+		}
+	}
+
 }
 
 // Deployments ------------------------------------------------------------------------------
