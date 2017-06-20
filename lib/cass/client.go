@@ -196,9 +196,69 @@ func (self *CassClient) FetchBeacon(bkn *Beacon) (*Beacon, error) {
 
 // Messages ------------------------------------------------------------------------------
 
-func (self *CassClient) CreateMessage(m *Message, batch *gocql.Batch) UpsertResult {}
-func (self *CassClient) ChangeMessageDeployments(m *Message, additions *Message.Deployments, removals *Message.Deployments, batch *gocql.Batch) UpsertResult {
+func (self *CassClient) CreateMessage(m *Message, batch *gocql.Batch) UpsertResult {
+	template := `INSERT INTO messages (user_id, name, title, url, lang, deployments) VALUES (?, ?, ?, ?, ?, ?)`
+	args := []interface{}{
+		template,
+		m.UserId,
+		m.Name,
+		m.Title,
+		m.Url,
+		m.Lang,
+		m.Deployments,
+	}
+
+	if batch != nil {
+		batch.Query(args...)
+		return UpsertResult{Batch: batch, Err: nil}
+	} else {
+		return UpsertResult{
+			Batch: nil,
+			Err:   self.Sess.Query(args...).Exec(),
+		}
+	}
 }
+
+func (self *CassClient) AddMessageDeployments(m *Message, additions *Message.Deployments, batch *gocql.Batch) UpsertResult {
+	return self.addOrRemoveMessageDeployments(m, additions, true, batch)
+}
+func (self *CassClient) RemoveMessageDeployments(m *Message, removals *Message.Deployments, batch *gocql.Batch) UpsertResult {
+	return self.AddMessageDeployments(m, removals, false, batch)
+}
+
+// addOrRemoveMessageDeployments is the underlying function behind the exported AddMessageDeployments and RemoveMessageDeployments
+func (self *CassClient) addOrRemoveMessageDeployments(m *Message, changes *Message.Deployments, add bool, batch *gocql.Batch) UpsertResult {
+	if len(changes) == 0 {
+		return UpsertResult{Err: errors.New("must specify changes to message deployments")}
+	}
+
+	var operator string
+	if add {
+		operator = "+"
+	} else {
+		operator = "-"
+	}
+
+	template := `UPDATE messages SET deployments = deployments ` + operator + `? WHERE user_id = ? AND name = ? IF EXISTS`
+	args := []interface{}{
+		template,
+		changes,
+		m.UserId,
+		m.Name,
+	}
+
+	if batch != nil {
+		batch.Query(args...)
+		return UpsertResult{Batch: batch, Err: nil}
+	} else {
+		return UpsertResult{
+			Batch: nil,
+			Err:   self.Sess.Query(args...).Exec(),
+		}
+	}
+
+}
+
 func (self *CassClient) FetchMessage(m *Message, batch *gocql.Batch) (*Message, error) {}
 
 // DeploymentMetadata
