@@ -8,11 +8,22 @@ import (
 
 // interface for exported functionality
 type Client interface {
-	// Deployments
-	// Beacons
 	// Users
+	CreateUser(u *User, batch *gocql.Batch) UpsertResult
+	FetchUser(u *User) (*User, error)
+	// Beacons
+	CreateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult
+	UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult
+	FetchBeacon(bkn *Beacon) (*Beacon, error)
 	// Messages
-	// Schedule
+	CreateMessage(m *Message, batch *gocql.Batch) UpsertResult
+	AddMessageDeployments(m *Message, additions *Message.Deployments, batch *gocql.Batch) UpsertResult
+	RemoveMessageDeployments(m *Message, removals *Message.Deployments, batch *gocql.Batch) UpsertResult
+	addOrRemoveMessageDeployments(m *Message, changes *Message.Deployments, add bool, batch *gocql.Batch) UpsertResult
+	FetchMessage(m *Message) (*Message, error)
+	// Deployments
+	PostDeploymentMetadata(md *DeploymentMetadata, batch *gocql.Batch) UpsertResult
+	PostDeployment(deployment *Deployment) UpsertResult
 }
 
 type User struct {
