@@ -65,4 +65,52 @@ func TestCreateUser(t *testing.T) {
 func TestFetchUser(t *testing.T) {
 	client := createLocalhostClient("bkn")
 	defer client.Sess.Close()
+
+	prepopId := "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+	prepopEmail := "test.email@gmail.com"
+
+	t.Run("uuid", func(t *testing.T) {
+		// propulated user id
+		uuid, parseErr := gocql.ParseUUID(prepopId)
+
+		if parseErr != nil {
+			t.Error("failed parsing uuid")
+			return
+		}
+
+		user := User{
+			Id: &uuid,
+		}
+
+		foundUser, fetchErr := client.FetchUser(&user)
+
+		if fetchErr != nil {
+			t.Error("failed fetching user", fetchErr)
+			return
+		}
+
+		if foundUser == nil {
+			t.Error("failed to match user")
+			return
+		}
+
+	})
+
+	t.Run("email", func(t *testing.T) {
+		user := User{
+			Email: prepopEmail,
+		}
+
+		foundUser, fetchErr := client.FetchUser(&user)
+
+		if fetchErr != nil {
+			t.Error("failed fetching user", fetchErr)
+			return
+		}
+
+		if foundUser == nil {
+			t.Error("failed to match user")
+			return
+		}
+	})
 }

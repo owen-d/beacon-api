@@ -111,9 +111,9 @@ func (self *CassClient) FetchUser(u *User) (*User, error) {
 	matchedUser := &User{}
 	var err error
 	if u.Id != nil {
-		err = self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(matchedUser.Id, &matchedUser.Email)
+		err = self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(&matchedUser.Id, &matchedUser.Email)
 	} else {
-		err = self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(matchedUser.Id, &matchedUser.Email)
+		err = self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(&matchedUser.Id, &matchedUser.Email)
 	}
 
 	if err != nil {
@@ -280,7 +280,7 @@ func (self *CassClient) FetchMessage(m *Message) (*Message, error) {
 		m.Name,
 	}
 
-	err := self.Sess.Query(template, args...).Scan(resMsg.UserId, &resMsg.Name, &resMsg.Title, &resMsg.Url, &resMsg.Lang, &resMsg.Deployments)
+	err := self.Sess.Query(template, args...).Scan(&resMsg.UserId, &resMsg.Name, &resMsg.Title, &resMsg.Url, &resMsg.Lang, &resMsg.Deployments)
 	return resMsg, err
 }
 
