@@ -368,13 +368,27 @@ func TestPostDeployment(t *testing.T) {
 		dep := Deployment{
 			UserId:      &uuid,
 			DeployName:  "test-full-deployment",
-			MessageName: "deploytest-message-name",
+			MessageName: prepopMName,
 			BeaconNames: []string{prepopBName},
 		}
 
 		res := client.PostDeployment(&dep)
 		if res.Err != nil {
 			t.Error("failed to post deployment:", res.Err)
+		}
+	})
+
+	t.Run("from-MessageName-notexists", func(t *testing.T) {
+		dep := Deployment{
+			UserId:      &uuid,
+			DeployName:  "test-full-deployment",
+			MessageName: "deploytest-message-name-invalid",
+			BeaconNames: []string{prepopBName},
+		}
+
+		res := client.PostDeployment(&dep)
+		if res.Err == nil {
+			t.Error("false positive: should have failed with invalid message name")
 		}
 	})
 

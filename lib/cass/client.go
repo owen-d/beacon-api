@@ -3,7 +3,6 @@ package cass
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gocql/gocql"
 )
 
@@ -313,19 +312,22 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 	// execute everything concurrently & pass results through dispatcher
 	dispatch := newDispatcher()
 
-	// mName is the message name to use, coming from MessageName or Message.Name
-	var mName string
 	// handle MessageName or Message fields appropriately
-	if deployment.MessageName != "" {
-		mName = deployment.MessageName
+	if mName := deployment.MessageName; mName != "" {
+		// must make sure MessageName matches an existing message & assign it into the deployment struct
+		foundMsg, err := self.FetchMessage(&Message{UserId: deployment.UserId, Name: mName})
+		if err != nil {
+			return &UpsertResult{Err: err}
+		} else {
+			deployment.Message = foundMsg
+		}
 
 		// Need to UPDATE the message with the new deployment_name (append to set)
 		additions := []string{deployment.DeployName}
 		dispatch.Register(func() *UpsertResult {
-			return self.AddMessageDeployments(&Message{UserId: deployment.UserId, Name: deployment.MessageName}, additions, nil)
+			return self.AddMessageDeployments(&Message{UserId: deployment.UserId, Name: mName}, additions, nil)
 		})
 	} else {
-		mName = deployment.Message.Name
 
 		// Otherwise, create a new message from the provided Message
 		deployment.Message.Deployments = []string{deployment.DeployName}
@@ -354,7 +356,7 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 		UserId:     deployment.UserId,
 		DeployName: deployment.DeployName,
 		// message could be provided as a reference (MessageName) or as a new Message object
-		MessageName: mName,
+		MessageName: deployment.Message.Name,
 	}
 
 	dispatch.Register(func() *UpsertResult {
@@ -364,7 +366,6 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 	for i := uint32(0); i < dispatch.Ct; i++ {
 		res := <-dispatch.Ch
 
-		fmt.Printf("i: %v, res: %+v\n", i, res)
 		if res.Err != nil {
 			return res
 		}
