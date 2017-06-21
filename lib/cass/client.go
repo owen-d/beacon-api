@@ -9,47 +9,46 @@ import (
 // interface for exported functionality
 type Client interface {
 	// Users
-	CreateUser(u *User, batch *gocql.Batch) UpsertResult
-	FetchUser(u *User) (*User, error)
+	CreateUser(*User, *gocql.Batch) UpsertResult
+	FetchUser(*User) (*User, error)
 	// Beacons
-	CreateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult
-	UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) UpsertResult
-	FetchBeacon(bkn *Beacon) (*Beacon, error)
+	CreateBeacons([]*Beacon, *gocql.Batch) UpsertResult
+	UpdateBeacons([]*Beacon, *gocql.Batch) UpsertResult
+	FetchBeacon(*Beacon) (*Beacon, error)
 	// Messages
-	CreateMessage(m *Message, batch *gocql.Batch) UpsertResult
-	AddMessageDeployments(m *Message, additions *Message.Deployments, batch *gocql.Batch) UpsertResult
-	RemoveMessageDeployments(m *Message, removals *Message.Deployments, batch *gocql.Batch) UpsertResult
-	addOrRemoveMessageDeployments(m *Message, changes *Message.Deployments, add bool, batch *gocql.Batch) UpsertResult
-	FetchMessage(m *Message) (*Message, error)
+	CreateMessage(*Message, *gocql.Batch) UpsertResult
+	AddMessageDeployments(*Message, *[]string, *gocql.Batch) UpsertResult
+	RemoveMessageDeployments(*Message, *[]string, *gocql.Batch) UpsertResult
+	FetchMessage(*Message) (*Message, error)
 	// Deployments
-	PostDeploymentMetadata(md *DeploymentMetadata, batch *gocql.Batch) UpsertResult
-	PostDeployment(deployment *Deployment) UpsertResult
+	PostDeploymentMetadata(*DeploymentMetadata, *gocql.Batch) UpsertResult
+	PostDeployment(*Deployment) UpsertResult
 }
 
 type User struct {
-	Id    gocql.UUID `cql:"id"`
-	Email string     `cql:"email"`
+	Id    *gocql.UUID `cql:"id"`
+	Email string      `cql:"email"`
 }
 
 type Beacon struct {
-	UserId     gocql.UUID `cql:"user_id"`
-	DeployName string     `cql:"deploy_name"`
-	Name       string     `cql:"name"`
+	UserId     *gocql.UUID `cql:"user_id"`
+	DeployName string      `cql:"deploy_name"`
+	Name       string      `cql:"name"`
 }
 
 type Message struct {
-	UserId      gocql.UUID `cql:"user_id"`
-	Name        string     `cql:"name"`
-	Title       string     `cql:"title"`
-	Url         string     `cql:"url"`
-	Lang        string     `cql:"lang"`
-	Deployments []string   `cql:"deployments"`
+	UserId      *gocql.UUID `cql:"user_id"`
+	Name        string      `cql:"name"`
+	Title       string      `cql:"title"`
+	Url         string      `cql:"url"`
+	Lang        string      `cql:"lang"`
+	Deployments []string    `cql:"deployments"`
 }
 
 // Deployment is not an actual data structure stored in cassandra, but rather a construct that we disassemble into beacons. If a MessageName is provided, we will read/use that
 // for settting a deployment method, otherwise creating a message if the Message field is set.
 type Deployment struct {
-	UserId      gocql.UUID
+	UserId      *gocql.UUID
 	DeployName  string
 	MessageName string
 	Message     *Message
@@ -58,9 +57,9 @@ type Deployment struct {
 
 // DeploymentMetadata mirrors the need for a 'dashboard' level overview of beacon deployments.
 type DeploymentMetadata struct {
-	UserId      gocql.UUID `cql:"user_id"`
-	DeployName  string     `cql:"deploy_name"`
-	MessageName string     `cql:"message_name"`
+	UserId      *gocql.UUID `cql:"user_id"`
+	DeployName  string      `cql:"deploy_name"`
+	MessageName string      `cql:"message_name"`
 }
 
 type CassClient struct {
@@ -82,25 +81,26 @@ func Connect(cluster *gocql.ClusterConfig, keyspace string) (*CassClient, error)
 		return nil, connectErr
 	}
 
-	return *CassClient{Sess: session}
+	return &CassClient{Sess: session}, nil
 }
 
 // Users ------------------------------------------------------------------------------
 
 func (self *CassClient) CreateUser(u *User, batch *gocql.Batch) UpsertResult {
+	uuid, _ := gocql.RandomUUID()
+	template := `INSERT INTO users (id, email) VALUES (?, ?)`
 	args := []interface{}{
-		`INSERT INTO users (id, email) VALUES (?, ?)`,
-		gocql.RandomUUID(),
+		&uuid,
 		u.Email,
 	}
 
 	if batch != nil {
-		batch.Query(args...)
+		batch.Query(template, args...)
 		return UpsertResult{Batch: batch, Err: nil}
 	} else {
 		return UpsertResult{
 			Batch: nil,
-			Err:   self.Sess.Query(args...).Exec(),
+			Err:   self.Sess.Query(template, args...).Exec(),
 		}
 	}
 
@@ -109,13 +109,13 @@ func (self *CassClient) CreateUser(u *User, batch *gocql.Batch) UpsertResult {
 func (self *CassClient) FetchUser(u *User) (*User, error) {
 	// instantiate user struct for unmarshalling
 	matchedUser := &User{}
-	if u.Id {
-		err := self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(&matchedUser.Id, &matchedUser.Email)
+	if u.Id != nil {
+		err := self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(matchedUser.Id, &matchedUser.Email)
 	} else {
-		err := self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(&matchedUser.Id, &matchedUser.Email)
+		err := self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(matchedUser.Id, &matchedUser.Email)
 	}
 
-	if matchedUser.Id {
+	if matchedUser.Id != nil {
 		return matchedUser, nil
 	} else {
 		return nil, errors.New("no matched user")
@@ -144,7 +144,7 @@ func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) Ups
 			bkn.DeployName,
 		}
 
-		batch.Query(cmd...)
+		batch.Query(template, cmd...)
 	}
 
 	// If a batch was provided, we do not need to execute the query, it may be done as part of a later transaction.
@@ -170,13 +170,12 @@ func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) Ups
 
 	for _, bkn := range beacons {
 		cmd := []interface{}{
-			template,
 			bkn.DeployName,
 			bkn.UserId,
 			bkn.Name,
 		}
 
-		batch.Query(cmd...)
+		batch.Query(template, cmd...)
 	}
 
 	// If a batch was provided, we do not need to execute the query, it may be done as part of a later transaction.
@@ -195,13 +194,13 @@ func (self *CassClient) FetchBeacon(bkn *Beacon) (*Beacon, error) {
 		Name:   bkn.Name,
 	}
 
+	template := `SELECT deploy_name FROM beacons WHERE user_id = ? AND name = ?`
 	cmd := []interface{}{
-		`SELECT deploy_name FROM beacons WHERE user_id = ? AND name = ?`,
 		bkn.UserId,
 		bkn.Name,
 	}
 
-	err := self.Sess.Query(cmd...).Scan(&resBkn.DeployName)
+	err := self.Sess.Query(template, cmd...).Scan(&resBkn.DeployName)
 	return &resBkn, err
 }
 
@@ -210,7 +209,6 @@ func (self *CassClient) FetchBeacon(bkn *Beacon) (*Beacon, error) {
 func (self *CassClient) CreateMessage(m *Message, batch *gocql.Batch) UpsertResult {
 	template := `INSERT INTO messages (user_id, name, title, url, lang, deployments) VALUES (?, ?, ?, ?, ?, ?)`
 	args := []interface{}{
-		template,
 		m.UserId,
 		m.Name,
 		m.Title,
@@ -220,26 +218,26 @@ func (self *CassClient) CreateMessage(m *Message, batch *gocql.Batch) UpsertResu
 	}
 
 	if batch != nil {
-		batch.Query(args...)
+		batch.Query(template, args...)
 		return UpsertResult{Batch: batch, Err: nil}
 	} else {
 		return UpsertResult{
 			Batch: nil,
-			Err:   self.Sess.Query(args...).Exec(),
+			Err:   self.Sess.Query(template, args...).Exec(),
 		}
 	}
 }
 
-func (self *CassClient) AddMessageDeployments(m *Message, additions *Message.Deployments, batch *gocql.Batch) UpsertResult {
+func (self *CassClient) AddMessageDeployments(m *Message, additions *[]string, batch *gocql.Batch) UpsertResult {
 	return self.addOrRemoveMessageDeployments(m, additions, true, batch)
 }
-func (self *CassClient) RemoveMessageDeployments(m *Message, removals *Message.Deployments, batch *gocql.Batch) UpsertResult {
-	return self.AddMessageDeployments(m, removals, false, batch)
+func (self *CassClient) RemoveMessageDeployments(m *Message, removals *[]string, batch *gocql.Batch) UpsertResult {
+	return self.addOrRemoveMessageDeployments(m, removals, false, batch)
 }
 
 // addOrRemoveMessageDeployments is the underlying function behind the exported AddMessageDeployments and RemoveMessageDeployments
-func (self *CassClient) addOrRemoveMessageDeployments(m *Message, changes *Message.Deployments, add bool, batch *gocql.Batch) UpsertResult {
-	if len(changes) == 0 {
+func (self *CassClient) addOrRemoveMessageDeployments(m *Message, changes *[]string, add bool, batch *gocql.Batch) UpsertResult {
+	if len(*changes) == 0 {
 		return UpsertResult{Err: errors.New("must specify changes to message deployments")}
 	}
 
@@ -252,33 +250,32 @@ func (self *CassClient) addOrRemoveMessageDeployments(m *Message, changes *Messa
 
 	template := `UPDATE messages SET deployments = deployments ` + operator + `? WHERE user_id = ? AND name = ? IF EXISTS`
 	args := []interface{}{
-		template,
 		changes,
 		m.UserId,
 		m.Name,
 	}
 
 	if batch != nil {
-		batch.Query(args...)
+		batch.Query(template, args...)
 		return UpsertResult{Batch: batch, Err: nil}
 	} else {
 		return UpsertResult{
 			Batch: nil,
-			Err:   self.Sess.Query(args...).Exec(),
+			Err:   self.Sess.Query(template, args...).Exec(),
 		}
 	}
 
 }
 
 func (self *CassClient) FetchMessage(m *Message) (*Message, error) {
-	resMsg := Message{}
+	resMsg := &Message{}
+	template := `SELECT user_id, name, title, url, lang, deployments FROM messages WHERE user_id = ? AND name = ?`
 	args := []interface{}{
-		`SELECT user_id, name, title, url, lang, deployments FROM messages WHERE user_id = ? AND name = ?`,
 		m.UserId,
 		m.Name,
 	}
 
-	err := self.Sess.Query(args...).Scan(resMsg.UserId, resMsg.Name, resMsg.Title, resMsg.Url, resMsg.Lang, resMsg.Deployments)
+	err := self.Sess.Query(template, args...).Scan(resMsg.UserId, &resMsg.Name, &resMsg.Title, &resMsg.Url, &resMsg.Lang, &resMsg.Deployments)
 	return resMsg, err
 }
 
@@ -286,19 +283,18 @@ func (self *CassClient) FetchMessage(m *Message) (*Message, error) {
 func (self *CassClient) PostDeploymentMetadata(md *DeploymentMetadata, batch *gocql.Batch) UpsertResult {
 	template := `INSERT INTO deployments_metadata (user_id, deploy_name, message_name) VALUES (?, ?, ?)`
 	args := []interface{}{
-		template,
 		md.UserId,
 		md.DeployName,
 		md.MessageName,
 	}
 
 	if batch != nil {
-		batch.Query(args...)
+		batch.Query(template, args...)
 		return UpsertResult{Batch: batch, Err: nil}
 	} else {
 		return UpsertResult{
 			Batch: nil,
-			Err:   self.Sess.Query(args...).Exec(),
+			Err:   self.Sess.Query(template, args...).Exec(),
 		}
 	}
 
@@ -311,16 +307,16 @@ func (self *CassClient) PostDeploymentMetadata(md *DeploymentMetadata, batch *go
 func (self *CassClient) PostDeployment(deployment *Deployment) UpsertResult {
 	batch := gocql.NewBatch(gocql.LoggedBatch)
 	// handle MessageName or Message fields appropriately
-	if deployment.MessageName {
+	if deployment.MessageName != "" {
 		// fetch message from id
 		msg, fetchErr := self.FetchMessage(&Message{Name: deployment.MessageName, UserId: deployment.UserId})
 		if fetchErr != nil {
-			return nil, fetchErr
+			return UpsertResult{Err: fetchErr}
 		}
 
 		// Need to UPDATE the message with the new deployment_name (append to set)
-		additions := Message.Deployments{deployment.DeployName}
-		self.ChangeMessageDeployments(&Message{UserId: deployment.UserId, Name: deployment.MessageName}, &additions, nil, batch)
+		additions := []string{deployment.DeployName}
+		self.AddMessageDeployments(&Message{UserId: deployment.UserId, Name: deployment.MessageName}, &additions, batch)
 	} else {
 		// Otherwise, create a new message from the provided Message
 		deployment.Message.Deployments = []string{deployment.DeployName}
@@ -334,22 +330,28 @@ func (self *CassClient) PostDeployment(deployment *Deployment) UpsertResult {
 		bkn := Beacon{
 			UserId:     deployment.UserId,
 			DeployName: deployment.DeployName,
-			BeaconName: bName,
+			Name:       bName,
 		}
-		bkns = append(bkns, bkn)
+		bkns = append(bkns, &bkn)
 	}
 
 	self.UpdateBeacons(bkns, batch)
 
+	var mName string
+	if deployment.MessageName != "" {
+		mName = deployment.MessageName
+	} else {
+		mName = deployment.Message.Name
+	}
 	// update metadata
 	deploymentMeta := DeploymentMetadata{
 		UserId:     deployment.UserId,
 		DeployName: deployment.DeployName,
 		// message could be provided as a reference (MessageName) or as a new Message object
-		MessageName: deployment.MessageName || deployment.Message.Name,
+		MessageName: mName,
 	}
 
-	self.PostDeploymentMetadata(deploymentMeta, batch)
+	self.PostDeploymentMetadata(&deploymentMeta, batch)
 
 	//Execute batch w/ context & return res
 	res := UpsertResult{
