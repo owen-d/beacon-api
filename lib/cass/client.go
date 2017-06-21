@@ -3,6 +3,7 @@ package cass
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gocql/gocql"
 )
 
@@ -309,22 +310,32 @@ func (self *CassClient) PostDeploymentMetadata(md *DeploymentMetadata, batch *go
 // PostDeployment writes the current deployname to every beacon in the list via an update clause, causing any now-invalid records in the deployments materialized view (on top of beacons) to be deleted via a partition drop (& subsequently recreated)
 // Must write Deployment to every beacon, deploy_name to any message used, and bNames/messageName/deployName to deployments_metadata
 func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
-	batch := gocql.NewBatch(gocql.LoggedBatch)
+	// execute everything concurrently & pass results through dispatcher
+	dispatch := newDispatcher()
+
+	// mName is the message name to use, coming from MessageName or Message.Name
+	var mName string
 	// handle MessageName or Message fields appropriately
 	if deployment.MessageName != "" {
+		mName = deployment.MessageName
 
 		// Need to UPDATE the message with the new deployment_name (append to set)
 		additions := []string{deployment.DeployName}
-		self.AddMessageDeployments(&Message{UserId: deployment.UserId, Name: deployment.MessageName}, additions, batch)
+		dispatch.Register(func() *UpsertResult {
+			return self.AddMessageDeployments(&Message{UserId: deployment.UserId, Name: deployment.MessageName}, additions, nil)
+		})
 	} else {
+		mName = deployment.Message.Name
+
 		// Otherwise, create a new message from the provided Message
 		deployment.Message.Deployments = []string{deployment.DeployName}
 		deployment.Message.UserId = deployment.UserId
-		self.CreateMessage(deployment.Message, batch)
-
+		dispatch.Register(func() *UpsertResult {
+			return self.CreateMessage(deployment.Message, nil)
+		})
 	}
 	// take list of beacon names, write the new deployname to them all
-	bkns := make([]*Beacon, len(deployment.BeaconNames))
+	bkns := make([]*Beacon, 0, len(deployment.BeaconNames))
 	for _, bName := range deployment.BeaconNames {
 		bkn := Beacon{
 			UserId:     deployment.UserId,
@@ -334,14 +345,10 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 		bkns = append(bkns, &bkn)
 	}
 
-	self.UpdateBeacons(bkns, batch)
+	dispatch.Register(func() *UpsertResult {
+		return self.UpdateBeacons(bkns, nil)
+	})
 
-	var mName string
-	if deployment.MessageName != "" {
-		mName = deployment.MessageName
-	} else {
-		mName = deployment.Message.Name
-	}
 	// update metadata
 	deploymentMeta := DeploymentMetadata{
 		UserId:     deployment.UserId,
@@ -350,12 +357,23 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 		MessageName: mName,
 	}
 
-	self.PostDeploymentMetadata(&deploymentMeta, batch)
+	dispatch.Register(func() *UpsertResult {
+		return self.PostDeploymentMetadata(&deploymentMeta, nil)
+	})
 
-	//Execute batch w/ context & return res
+	for i := uint32(0); i < dispatch.Ct; i++ {
+		res := <-dispatch.Ch
+
+		fmt.Printf("i: %v, res: %+v\n", i, res)
+		if res.Err != nil {
+			return res
+		}
+	}
+
 	res := UpsertResult{
-		Err:   self.Sess.ExecuteBatch(batch),
-		Batch: batch,
+		Err: nil,
+		// return nil batch b/c theres no collective batch
+		Batch: nil,
 	}
 
 	return &res
@@ -366,3 +384,26 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 
 // FetchDeploymentMetadata fetches the metadata record for a deployment
 // func FetchDeploymentMetadata() {}
+
+// Helpers
+
+//dispatcher is a private struct which will receive commands & execute them in goroutines. You may then await the channel for responses.
+// It encloses the logic for maintaining/incrementing counts
+type dispatcher struct {
+	Ch chan *UpsertResult
+	Ct uint32
+}
+
+func (self *dispatcher) Register(fn func() *UpsertResult) {
+	self.Ct += 1
+	go func() {
+		self.Ch <- fn()
+	}()
+}
+
+func newDispatcher() *dispatcher {
+	return &dispatcher{
+		Ch: make(chan *UpsertResult),
+		Ct: 0,
+	}
+}

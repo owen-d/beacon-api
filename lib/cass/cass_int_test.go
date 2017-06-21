@@ -357,3 +357,43 @@ func TestPostDeploymentMetadata(t *testing.T) {
 	})
 
 }
+
+func TestPostDeployment(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	t.Run("from-MessageName", func(t *testing.T) {
+		dep := Deployment{
+			UserId:      &uuid,
+			DeployName:  "test-full-deployment",
+			MessageName: "deploytest-message-name",
+			BeaconNames: []string{prepopBName},
+		}
+
+		res := client.PostDeployment(&dep)
+		if res.Err != nil {
+			t.Error("failed to post deployment:", res.Err)
+		}
+	})
+
+	t.Run("from-Message", func(t *testing.T) {
+		dep := Deployment{
+			UserId:      &uuid,
+			DeployName:  "test-full-deployment",
+			BeaconNames: []string{prepopBName},
+			Message: &Message{
+				Name:  "deploytest-new-msg",
+				Title: "hi",
+				Url:   "https://google.com",
+				Lang:  "en",
+			},
+		}
+
+		res := client.PostDeployment(&dep)
+		if res.Err != nil {
+			t.Error("failed to post deployment:", res.Err)
+		}
+	})
+}
