@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+const (
+	prepopId    = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+	prepopEmail = "test.email@gmail.com"
+)
+
 // need to be able to call subtest on cmd.
 
 func createLocalhostClient(keyspace string) *CassClient {
@@ -16,6 +21,22 @@ func createLocalhostClient(keyspace string) *CassClient {
 	}
 
 	return client
+}
+
+func testBatch(t *testing.T, res *UpsertResult, client *CassClient, batch *gocql.Batch) {
+	if res.Err != nil {
+		t.Error("failed to create batch", res.Err)
+	}
+	// check attempt ct
+	if res.Batch.Attempts() != 0 {
+		t.Error("batch preemptively executed")
+	}
+
+	// execute batch
+	err := client.Sess.ExecuteBatch(res.Batch)
+	if err != nil {
+		t.Error("failed batch execution", err)
+	}
 }
 
 func TestCreateUser(t *testing.T) {
@@ -42,32 +63,19 @@ func TestCreateUser(t *testing.T) {
 		batch := gocql.NewBatch(gocql.LoggedBatch)
 		res := client.CreateUser(&newUser, batch)
 
-		if res.Err != nil {
-			t.Error("failed to create batch", res.Err)
-		}
-		// check attempt ct
-		if res.Batch.Attempts() != 0 {
-			t.Error("batch preemptively executed")
-		}
 		// check size
 		if res.Batch.Size() != 1 {
 			t.Error("batch has incorerct # of statements:")
 		}
 
-		// execute batch
-		err := client.Sess.ExecuteBatch(res.Batch)
-		if err != nil {
-			t.Error("failed batch execution", err)
-		}
+		testBatch(t, res, client, batch)
+
 	})
 }
 
 func TestFetchUser(t *testing.T) {
 	client := createLocalhostClient("bkn")
 	defer client.Sess.Close()
-
-	prepopId := "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-	prepopEmail := "test.email@gmail.com"
 
 	t.Run("uuid", func(t *testing.T) {
 		// propulated user id
@@ -112,5 +120,48 @@ func TestFetchUser(t *testing.T) {
 			t.Error("failed to match user")
 			return
 		}
+	})
+}
+
+func TestCreateBeacons(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	t.Run("non-batch", func(t *testing.T) {
+		bkns := []*Beacon{
+			&Beacon{
+				UserId: &uuid,
+				Name:   "testcreate-1",
+			},
+			&Beacon{
+				UserId: &uuid,
+				Name:   "testcreate-2",
+			},
+		}
+
+		res := client.CreateBeacons(bkns, nil)
+		if res.Err != nil {
+			t.Error("failed to create beacons: %v", res.Err)
+		}
+
+	})
+
+	t.Run("batch", func(t *testing.T) {
+		bkns := []*Beacon{
+			&Beacon{
+				UserId: &uuid,
+				Name:   "testcreate-b-1",
+			},
+			&Beacon{
+				UserId: &uuid,
+				Name:   "testcreate-b-2",
+			},
+		}
+
+		batch := gocql.NewBatch(gocql.LoggedBatch)
+
+		res := client.CreateBeacons(bkns, batch)
+		testBatch(t, res, client, batch)
 	})
 }

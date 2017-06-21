@@ -143,7 +143,6 @@ func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) *Up
 
 	for _, bkn := range beacons {
 		cmd := []interface{}{
-			template,
 			bkn.UserId,
 			bkn.Name,
 			bkn.DeployName,
