@@ -9,6 +9,7 @@ import (
 const (
 	prepopId    = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 	prepopEmail = "test.email@gmail.com"
+	prepopBName = "a1"
 )
 
 // need to be able to call subtest on cmd.
@@ -165,3 +166,97 @@ func TestCreateBeacons(t *testing.T) {
 		testBatch(t, res, client, batch)
 	})
 }
+
+func TestUpdateBeacons(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	t.Run("non-batch", func(t *testing.T) {
+		bkn := Beacon{
+			UserId:     &uuid,
+			Name:       prepopBName,
+			DeployName: "non-batch-deploy",
+		}
+
+		res := client.UpdateBeacons([]*Beacon{&bkn}, nil)
+		if res.Err != nil {
+			t.Error("failed to create beacons: %v", res.Err)
+		}
+	})
+
+	t.Run("batch", func(t *testing.T) {
+		bkn := Beacon{
+			UserId:     &uuid,
+			Name:       prepopBName,
+			DeployName: "batch-deploy",
+		}
+
+		batch := gocql.NewBatch(gocql.LoggedBatch)
+
+		res := client.UpdateBeacons([]*Beacon{&bkn}, batch)
+		testBatch(t, res, client, batch)
+
+	})
+
+}
+
+func TestFetchBeacon(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	bkn := Beacon{
+		UserId: &uuid,
+		Name:   prepopBName,
+	}
+
+	_, err := client.FetchBeacon(&bkn)
+	if err != nil {
+		t.Error("failed to match beacon:", err)
+	}
+}
+
+func TestCreateMessage(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	t.Run("non-batch", func(t *testing.T) {
+		msg := Message{
+			UserId:      &uuid,
+			Name:        "non-batch-create-msg",
+			Title:       "filler",
+			Url:         "https://filler.com",
+			Lang:        "en",
+			Deployments: []string{"dep1"},
+		}
+
+		res := client.CreateMessage(&msg, nil)
+		if res.Err != nil {
+			t.Error("failed to create msg:", res.Err)
+		}
+
+	})
+
+	t.Run("batch", func(t *testing.T) {
+		msg := Message{
+			UserId:      &uuid,
+			Name:        "non-batch-create-msg",
+			Title:       "filler",
+			Url:         "https://filler.com",
+			Lang:        "en",
+			Deployments: []string{"dep1"},
+		}
+
+		batch := gocql.NewBatch(gocql.LoggedBatch)
+		res := client.CreateMessage(&msg, batch)
+
+		testBatch(t, res, client, batch)
+	})
+}
+
+// func ChangeMessageDeployments(t *testing.T) {}

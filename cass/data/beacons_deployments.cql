@@ -1,6 +1,7 @@
 // populate some data
 
 use bkn;
+INSERT INTO beacons (user_id, name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a1', null);
 INSERT INTO beacons (user_id, name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a2', null);
 INSERT INTO beacons (user_id, name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a3', null);
 INSERT INTO beacons (user_id, name, deploy_name) VALUES (6ba7b810-9dad-11d1-80b4-00c04fd430c8, 'a4', 'dep1');
