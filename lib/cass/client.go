@@ -17,8 +17,8 @@ type Client interface {
 	FetchBeacon(*Beacon) (*Beacon, error)
 	// Messages
 	CreateMessage(*Message, *gocql.Batch) *UpsertResult
-	AddMessageDeployments(*Message, *[]string, *gocql.Batch) *UpsertResult
-	RemoveMessageDeployments(*Message, *[]string, *gocql.Batch) *UpsertResult
+	AddMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
+	RemoveMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
 	FetchMessage(*Message) (*Message, error)
 	// Deployments
 	PostDeploymentMetadata(*DeploymentMetadata, *gocql.Batch) *UpsertResult
@@ -232,16 +232,16 @@ func (self *CassClient) CreateMessage(m *Message, batch *gocql.Batch) *UpsertRes
 	}
 }
 
-func (self *CassClient) AddMessageDeployments(m *Message, additions *[]string, batch *gocql.Batch) *UpsertResult {
+func (self *CassClient) AddMessageDeployments(m *Message, additions []string, batch *gocql.Batch) *UpsertResult {
 	return self.addOrRemoveMessageDeployments(m, additions, true, batch)
 }
-func (self *CassClient) RemoveMessageDeployments(m *Message, removals *[]string, batch *gocql.Batch) *UpsertResult {
+func (self *CassClient) RemoveMessageDeployments(m *Message, removals []string, batch *gocql.Batch) *UpsertResult {
 	return self.addOrRemoveMessageDeployments(m, removals, false, batch)
 }
 
 // addOrRemoveMessageDeployments is the underlying function behind the exported AddMessageDeployments and RemoveMessageDeployments
-func (self *CassClient) addOrRemoveMessageDeployments(m *Message, changes *[]string, add bool, batch *gocql.Batch) *UpsertResult {
-	if len(*changes) == 0 {
+func (self *CassClient) addOrRemoveMessageDeployments(m *Message, changes []string, add bool, batch *gocql.Batch) *UpsertResult {
+	if len(changes) == 0 {
 		return &UpsertResult{Err: errors.New("must specify changes to message deployments")}
 	}
 
@@ -315,7 +315,7 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 
 		// Need to UPDATE the message with the new deployment_name (append to set)
 		additions := []string{deployment.DeployName}
-		self.AddMessageDeployments(&Message{UserId: deployment.UserId, Name: deployment.MessageName}, &additions, batch)
+		self.AddMessageDeployments(&Message{UserId: deployment.UserId, Name: deployment.MessageName}, additions, batch)
 	} else {
 		// Otherwise, create a new message from the provided Message
 		deployment.Message.Deployments = []string{deployment.DeployName}
