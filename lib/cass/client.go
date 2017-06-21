@@ -109,10 +109,15 @@ func (self *CassClient) CreateUser(u *User, batch *gocql.Batch) UpsertResult {
 func (self *CassClient) FetchUser(u *User) (*User, error) {
 	// instantiate user struct for unmarshalling
 	matchedUser := &User{}
+	var err error
 	if u.Id != nil {
-		err := self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(matchedUser.Id, &matchedUser.Email)
+		err = self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(matchedUser.Id, &matchedUser.Email)
 	} else {
-		err := self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(matchedUser.Id, &matchedUser.Email)
+		err = self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(matchedUser.Id, &matchedUser.Email)
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	if matchedUser.Id != nil {
@@ -308,11 +313,6 @@ func (self *CassClient) PostDeployment(deployment *Deployment) UpsertResult {
 	batch := gocql.NewBatch(gocql.LoggedBatch)
 	// handle MessageName or Message fields appropriately
 	if deployment.MessageName != "" {
-		// fetch message from id
-		msg, fetchErr := self.FetchMessage(&Message{Name: deployment.MessageName, UserId: deployment.UserId})
-		if fetchErr != nil {
-			return UpsertResult{Err: fetchErr}
-		}
 
 		// Need to UPDATE the message with the new deployment_name (append to set)
 		additions := []string{deployment.DeployName}

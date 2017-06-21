@@ -20,25 +20,27 @@ func createLocalhostClient(keyspace string) *CassClient {
 
 func TestCreateUser(t *testing.T) {
 	client := createLocalhostClient("bkn")
-	defer client.Sess.close()
+	defer client.Sess.Close()
 
 	t.Run("Individual", func(t *testing.T) {
+		uuid, _ := gocql.RandomUUID()
 		newUser := User{
-			Id:    gocql.RandomUUID(),
+			Id:    &uuid,
 			Email: "newEmail@provider.com",
 		}
-		res := client.CreateUser(&new, nil)
+		res := client.CreateUser(&newUser, nil)
 		if res.Err != nil {
 			t.Fail()
 		}
 	})
 	t.Run("Batch", func(t *testing.T) {
+		uuid, _ := gocql.RandomUUID()
 		newUser := User{
-			Id:    gocql.RandomUUID(),
+			Id:    &uuid,
 			Email: "newEmail-batch@provider.com",
 		}
 		batch := gocql.NewBatch(gocql.LoggedBatch)
-		res := client.CreateUser(&new, batch)
+		res := client.CreateUser(&newUser, batch)
 
 		if res.Err != nil {
 			t.Error("failed to create batch", res.Err)
@@ -60,7 +62,7 @@ func TestCreateUser(t *testing.T) {
 	})
 }
 
-func TestFetchUser(t *Testing.T) {
+func TestFetchUser(t *testing.T) {
 	client := createLocalhostClient("bkn")
-	defer client.Sess.close()
+	defer client.Sess.Close()
 }
