@@ -322,3 +322,38 @@ func TestFetchMessage(t *testing.T) {
 	}
 
 }
+
+func TestPostDeploymentMetadata(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	t.Run("individual", func(t *testing.T) {
+		md := DeploymentMetadata{
+			UserId:      &uuid,
+			DeployName:  "dep_md_create",
+			MessageName: "msg",
+		}
+
+		res := client.PostDeploymentMetadata(&md, nil)
+
+		if res.Err != nil {
+			t.Fail()
+		}
+	})
+
+	t.Run("batch", func(t *testing.T) {
+		md := DeploymentMetadata{
+			UserId:      &uuid,
+			DeployName:  "dep_md_create",
+			MessageName: "msg",
+		}
+
+		batch := gocql.NewBatch(gocql.LoggedBatch)
+		res := client.PostDeploymentMetadata(&md, batch)
+
+		testBatch(t, res, client, batch)
+	})
+
+}
