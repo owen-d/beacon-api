@@ -10,6 +10,7 @@ const (
 	prepopId    = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 	prepopEmail = "test.email@gmail.com"
 	prepopBName = "a1"
+	prepopMName = "first_msg"
 )
 
 // need to be able to call subtest on cmd.
@@ -259,4 +260,65 @@ func TestCreateMessage(t *testing.T) {
 	})
 }
 
-// func ChangeMessageDeployments(t *testing.T) {}
+func TestChangeMessageDeployments(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+	msg := Message{
+		UserId: &uuid,
+		Name:   prepopMName,
+	}
+
+	t.Run("add", func(t *testing.T) {
+		additions := []string{"add1", "add2"}
+		res := client.AddMessageDeployments(&msg, additions, nil)
+		if res.Err != nil {
+			t.Fail()
+		}
+	})
+
+	t.Run("add-batch", func(t *testing.T) {
+		additions := []string{"add1-batch", "add2-batch"}
+		batch := gocql.NewBatch(gocql.LoggedBatch)
+		res := client.AddMessageDeployments(&msg, additions, batch)
+
+		testBatch(t, res, client, batch)
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		removals := []string{"remove1", "remove2"}
+		res := client.RemoveMessageDeployments(&msg, removals, nil)
+		if res.Err != nil {
+			t.Fail()
+		}
+	})
+
+	t.Run("remove-batch", func(t *testing.T) {
+		removals := []string{"remove1-batch", "remove2-batch"}
+		batch := gocql.NewBatch(gocql.LoggedBatch)
+		res := client.RemoveMessageDeployments(&msg, removals, batch)
+
+		testBatch(t, res, client, batch)
+	})
+}
+
+func TestFetchMessage(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	msg := Message{
+		UserId: &uuid,
+		Name:   prepopMName,
+	}
+
+	_, err := client.FetchMessage(&msg)
+
+	if err != nil {
+		t.Error("failed to fetch msg:", err)
+		return
+	}
+
+}
