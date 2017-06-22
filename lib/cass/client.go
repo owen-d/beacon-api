@@ -13,7 +13,7 @@ type Client interface {
 	FetchUser(*User) (*User, error)
 	// Beacons
 	CreateBeacons([]*Beacon, *gocql.Batch) *UpsertResult
-	UpdateBeacons([]*Beacon, *gocql.Batch) *UpsertResult
+	UpdateBeacons([]*Beacon) *UpsertResult
 	FetchBeacon(*Beacon) (*Beacon, error)
 	// Messages
 	CreateMessage(*Message, *gocql.Batch) *UpsertResult
@@ -160,17 +160,9 @@ func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) *Up
 }
 
 // UpdateBeacons must use an if exists clause to prevent errors like inserting a beacon which a user does not own.
-func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) *UpsertResult {
+func (self *CassClient) UpdateBeacons(beacons []*Beacon) *UpsertResult {
 	template := `UPDATE beacons SET deploy_name = ? WHERE user_id = ? AND name = ? IF EXISTS`
-
-	providedBatch := (batch != nil)
-	if !providedBatch {
-		batch = gocql.NewBatch(gocql.LoggedBatch)
-	}
-
-	res := UpsertResult{
-		Batch: batch,
-	}
+	dispatch := newDispatcher()
 
 	for _, bkn := range beacons {
 		cmd := []interface{}{
@@ -179,12 +171,26 @@ func (self *CassClient) UpdateBeacons(beacons []*Beacon, batch *gocql.Batch) *Up
 			bkn.Name,
 		}
 
-		batch.Query(template, cmd...)
+		dispatch.Register(func() *UpsertResult {
+			return &UpsertResult{
+				Batch: nil,
+				Err:   self.Sess.Query(template, cmd...).Exec(),
+			}
+		})
 	}
 
-	// If a batch was provided, we do not need to execute the query, it may be done as part of a later transaction.
-	if !providedBatch {
-		res.Err = self.Sess.ExecuteBatch(batch)
+	for i := uint32(0); i < dispatch.Ct; i++ {
+		res := <-dispatch.Ch
+
+		if res.Err != nil {
+			return res
+		}
+	}
+
+	res := UpsertResult{
+		Err: nil,
+		// return nil batch b/c theres no collective batch
+		Batch: nil,
 	}
 
 	return &res
@@ -348,7 +354,7 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 	}
 
 	dispatch.Register(func() *UpsertResult {
-		return self.UpdateBeacons(bkns, nil)
+		return self.UpdateBeacons(bkns)
 	})
 
 	// update metadata

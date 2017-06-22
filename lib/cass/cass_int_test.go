@@ -173,34 +173,16 @@ func TestUpdateBeacons(t *testing.T) {
 	defer client.Sess.Close()
 
 	uuid, _ := gocql.ParseUUID(prepopId)
+	bkn := Beacon{
+		UserId:     &uuid,
+		Name:       prepopBName,
+		DeployName: "non-batch-deploy",
+	}
 
-	t.Run("non-batch", func(t *testing.T) {
-		bkn := Beacon{
-			UserId:     &uuid,
-			Name:       prepopBName,
-			DeployName: "non-batch-deploy",
-		}
-
-		res := client.UpdateBeacons([]*Beacon{&bkn}, nil)
-		if res.Err != nil {
-			t.Error("failed to create beacons: %v", res.Err)
-		}
-	})
-
-	t.Run("batch", func(t *testing.T) {
-		bkn := Beacon{
-			UserId:     &uuid,
-			Name:       prepopBName,
-			DeployName: "batch-deploy",
-		}
-
-		batch := gocql.NewBatch(gocql.LoggedBatch)
-
-		res := client.UpdateBeacons([]*Beacon{&bkn}, batch)
-		testBatch(t, res, client, batch)
-
-	})
-
+	res := client.UpdateBeacons([]*Beacon{&bkn})
+	if res.Err != nil {
+		t.Error("failed to create beacons: %v", res.Err)
+	}
 }
 
 func TestFetchBeacon(t *testing.T) {
