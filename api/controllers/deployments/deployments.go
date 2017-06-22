@@ -2,7 +2,6 @@ package deployments
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gocql/gocql"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/cass"
@@ -112,9 +111,11 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 		Url:   cassDep.Message.Url,
 	}
 	attachmentResults := self.postAttachments(cassDep.BeaconNames, attachment)
-	fmt.Printf("\nattach err: %+v\n", attachmentResults)
 
 	rw.WriteHeader(http.StatusCreated)
+
+	data, _ := json.Marshal(attachmentResults)
+	rw.Write(data)
 }
 
 type AttachmentResult struct {
@@ -149,12 +150,14 @@ func (self *DeploymentMethods) postAttachments(bNames []string, attachment *beac
 				return
 			} else {
 				resp.Attachment = postedAttachment
+				ch <- resp
+				return
 			}
 		}(bName, ch)
 	}
 
-	for i := range bNames {
-		res[i] = <-ch
+	for range bNames {
+		res = append(res, <-ch)
 	}
 
 	return res
