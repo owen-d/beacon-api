@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/gocql/gocql"
 	"github.com/owen-d/beacon-api/api"
 	"github.com/owen-d/beacon-api/config"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
+	"github.com/owen-d/beacon-api/lib/cass"
 	"log"
 	"net/http"
 	"os"
@@ -45,8 +47,11 @@ func main() {
 	svc, err := beaconclient.NewBeaconClient(httpClient)
 	safeExit(err)
 
+	// cassClient
+	cassClient := createLocalhostCassClient("bkn")
+
 	// inject necessary backend (google api svc) into env
-	env := api.Env{svc}
+	env := api.Env{svc, cassClient}
 
 	// build router from bound env
 	router := env.Init()
@@ -92,4 +97,14 @@ func beaconCycle(svc *beaconclient.BeaconClient) {
 
 	fmt.Printf("done")
 
+}
+
+func createLocalhostCassClient(keyspace string) *cass.CassClient {
+	cluster := gocql.NewCluster("localhost")
+	client, err := cass.Connect(cluster, keyspace)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return client
 }
