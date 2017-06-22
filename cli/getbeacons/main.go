@@ -9,6 +9,14 @@ import (
 )
 
 func main() {
+	beacons, _ := GetBeacons()
+	for i, b := range beacons.Beacons {
+		fmt.Printf("beacon %v:\n%+v\n", i, *b)
+	}
+
+}
+
+func GetBeacons() (*bc.BeaconResponse, error) {
 	resp, _ := http.Get("http://localhost:8080/beacons/")
 
 	defer resp.Body.Close()
@@ -16,9 +24,6 @@ func main() {
 
 	beacons := bc.BeaconResponse{}
 	json.Unmarshal(body, &beacons)
-
-	for i, b := range beacons.Beacons {
-		fmt.Printf("beacon %v:\n%+v\n", i, *b)
-	}
+	return &beacons, nil
 
 }
