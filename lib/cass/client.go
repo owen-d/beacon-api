@@ -21,10 +21,10 @@ type Client interface {
 	RemoveMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
 	FetchMessage(*Message) (*Message, error)
 	// Deployments
-	PostDeploymentMetadata(*DeploymentMetadata, *gocql.Batch) *UpsertResult
+	PostDeploymentMetadata(*Deployment, *gocql.Batch) *UpsertResult
 	PostDeployment(*Deployment) *UpsertResult
 	// Metadata
-	FetchDeploymentsMetadata(*DeploymentMetadata) ([]*DeploymentMetadata, error)
+	FetchDeploymentsMetadata(*Deployment) ([]*Deployment, error)
 }
 
 const (
@@ -59,13 +59,6 @@ type Deployment struct {
 	MessageName string
 	Message     *Message
 	BeaconNames []string
-}
-
-// DeploymentMetadata mirrors the need for a 'dashboard' level overview of beacon deployments.
-type DeploymentMetadata struct {
-	UserId      *gocql.UUID `cql:"user_id"`
-	DeployName  string      `cql:"deploy_name"`
-	MessageName string      `cql:"message_name"`
 }
 
 type CassClient struct {
@@ -210,13 +203,13 @@ func (self *CassClient) FetchBeacon(bkn *Beacon) (*Beacon, error) {
 		Name:   bkn.Name,
 	}
 
-	template := `SELECT deploy_name FROM beacons WHERE user_id = ? AND name = ?`
+	template := `SELECT user_id, deploy_name FROM beacons WHERE user_id = ? AND name = ?`
 	cmd := []interface{}{
 		bkn.UserId,
 		bkn.Name,
 	}
 
-	err := self.Sess.Query(template, cmd...).Scan(&resBkn.DeployName)
+	err := self.Sess.Query(template, cmd...).Scan(&resBkn.UserId, &resBkn.DeployName)
 	return &resBkn, err
 }
 
@@ -296,12 +289,12 @@ func (self *CassClient) FetchMessage(m *Message) (*Message, error) {
 }
 
 // DeploymentMetadata
-func (self *CassClient) PostDeploymentMetadata(md *DeploymentMetadata, batch *gocql.Batch) *UpsertResult {
+func (self *CassClient) PostDeploymentMetadata(dep *Deployment, batch *gocql.Batch) *UpsertResult {
 	template := `INSERT INTO deployments_metadata (user_id, deploy_name, message_name) VALUES (?, ?, ?)`
 	args := []interface{}{
-		md.UserId,
-		md.DeployName,
-		md.MessageName,
+		dep.UserId,
+		dep.DeployName,
+		dep.MessageName,
 	}
 
 	if batch != nil {
@@ -317,13 +310,13 @@ func (self *CassClient) PostDeploymentMetadata(md *DeploymentMetadata, batch *go
 }
 
 // FetchDeploymentsMetadata
-func (self *CassClient) FetchDeploymentsMetadata(md *DeploymentMetadata) ([]*DeploymentMetadata, error) {
-	resRows := make([]*DeploymentMetadata, 0)
-	iter := self.Sess.Query(`SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? LIMIT ?`, md.UserId, DefaultLimit).Iter()
+func (self *CassClient) FetchDeploymentsMetadata(dep *Deployment) ([]*Deployment, error) {
+	resRows := make([]*Deployment, 0)
+	iter := self.Sess.Query(`SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? LIMIT ?`, dep.UserId, DefaultLimit).Iter()
 	shell := map[string]interface{}{}
 	for iter.MapScan(shell) {
 		id := shell["user_id"].(gocql.UUID)
-		resRows = append(resRows, &DeploymentMetadata{
+		resRows = append(resRows, &Deployment{
 			UserId:      &id,
 			DeployName:  shell["deploy_name"].(string),
 			MessageName: shell["message_name"].(string),
@@ -388,7 +381,7 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 	})
 
 	// update metadata
-	deploymentMeta := DeploymentMetadata{
+	deploymentMeta := Deployment{
 		UserId:     deployment.UserId,
 		DeployName: deployment.DeployName,
 		// message could be provided as a reference (MessageName) or as a new Message object

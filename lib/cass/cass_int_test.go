@@ -312,13 +312,13 @@ func TestPostDeploymentMetadata(t *testing.T) {
 	uuid, _ := gocql.ParseUUID(prepopId)
 
 	t.Run("individual", func(t *testing.T) {
-		md := DeploymentMetadata{
+		dep := Deployment{
 			UserId:      &uuid,
 			DeployName:  "dep_md_create",
 			MessageName: "msg",
 		}
 
-		res := client.PostDeploymentMetadata(&md, nil)
+		res := client.PostDeploymentMetadata(&dep, nil)
 
 		if res.Err != nil {
 			t.Fail()
@@ -326,24 +326,24 @@ func TestPostDeploymentMetadata(t *testing.T) {
 	})
 
 	t.Run("batch", func(t *testing.T) {
-		md := DeploymentMetadata{
+		dep := Deployment{
 			UserId:      &uuid,
 			DeployName:  "dep_md_create",
 			MessageName: "msg",
 		}
 
 		batch := gocql.NewBatch(gocql.LoggedBatch)
-		res := client.PostDeploymentMetadata(&md, batch)
+		res := client.PostDeploymentMetadata(&dep, batch)
 
 		testBatch(t, res, client, batch)
 	})
 
 	t.Run("fetch", func(t *testing.T) {
-		md := DeploymentMetadata{
+		dep := Deployment{
 			UserId: &uuid,
 		}
 
-		_, err := client.FetchDeploymentsMetadata(&md)
+		_, err := client.FetchDeploymentsMetadata(&dep)
 
 		if err != nil {
 			t.Error(err)
