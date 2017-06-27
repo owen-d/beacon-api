@@ -14,6 +14,8 @@ import (
 
 type DeploymentRoutes interface {
 	PostDeployment(http.ResponseWriter, *http.Request)
+	FetchDeploymentsMetadata(http.ResponseWriter, *http.Request)
+	FetchDeploymentByName(http.ResponseWriter, *http.Request)
 }
 
 type DeploymentMethods struct {
@@ -166,16 +168,25 @@ func (self *DeploymentMethods) postAttachments(bNames []string, attachment *beac
 	return res
 }
 
+func (self *DeploymentMethods) FetchDeploymentsMetadata(rw http.ResponseWriter, r *http.Request) {}
+func (self *DeploymentMethods) FetchDeploymentByName(rw http.ResponseWriter, r *http.Request)    {}
+
 // Router instantiates a Router object from the related lib
 func (self *DeploymentMethods) Router() *route.Router {
 	endpoints := []*route.Endpoint{
-		// &route.Endpoint{
-		// 	Method: "GET",
-		// 	Fns:    []http.HandlerFunc{self.GetBeacons},
-		// },
+		&route.Endpoint{
+			Method: "GET",
+			Fns:    []http.HandlerFunc{self.FetchDeploymentsMetadata},
+		},
 		&route.Endpoint{
 			Method: "POST",
 			Fns:    []http.HandlerFunc{self.PostDeployment},
+		},
+		// /:id routes
+		&route.Endpoint{
+			Method:  "GET",
+			Fns:     []http.HandlerFunc{self.FetchDeploymentByName},
+			SubPath: "/:id",
 		},
 	}
 

@@ -8,8 +8,9 @@ import (
 
 type Endpoint struct {
 	// Must be a HTTP Method
-	Method string
-	Fns    []http.HandlerFunc
+	Method  string
+	Fns     []http.HandlerFunc
+	SubPath string
 }
 
 func (e *Endpoint) Attach(n *negroni.Negroni) {
@@ -32,9 +33,15 @@ func (r *Router) build(rootRouter *mux.Router) {
 	// instantiate a new negroni middleware manageer,
 	// attach all the middleware functions to it, & bind those functions to a method on a subrouter
 	for _, endpoint := range r.Endpoints {
+		// allow a specified subpath to be handled on the same router for convenience, i.e. GET /item/:id can use a router on /item with a subpath /:id
+		sPath := endpoint.SubPath
+
+		if sPath == "" {
+			sPath = "/"
+		}
 		n := negroni.New()
 		endpoint.Attach(n)
-		r.Router.Handle("/", n).Methods(endpoint.Method)
+		r.Router.Handle(sPath, n).Methods(endpoint.Method)
 	}
 
 	//recursively build subroutes
