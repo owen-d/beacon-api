@@ -80,6 +80,7 @@ func (self *Deployment) ToCass() (*cass.Deployment, error) {
 	return cassDep, nil
 }
 
+// PostDeployment is middleware which creates a deployment (composed of its parts) in cassandra
 func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Request) {
 
 	deployment := &Deployment{}
@@ -118,12 +119,14 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 	rw.Write(data)
 }
 
+// AttachmentResult is a wrapper type hol,ding response data from google beacon platform about attachment deletions and creations
 type AttachmentResult struct {
 	Name       string
 	Err        error
 	Attachment *proximitybeacon.BeaconAttachment
 }
 
+// postAttachments is a private method which deletes & re-adds attachments to a beacon registered in google's beacon platform
 func (self *DeploymentMethods) postAttachments(bNames []string, attachment *beaconclient.AttachmentData) []*AttachmentResult {
 	res := make([]*AttachmentResult, 0, len(bNames))
 
@@ -163,6 +166,7 @@ func (self *DeploymentMethods) postAttachments(bNames []string, attachment *beac
 	return res
 }
 
+// Router instantiates a Router object from the related lib
 func (self *DeploymentMethods) Router() *route.Router {
 	endpoints := []*route.Endpoint{
 		// &route.Endpoint{
