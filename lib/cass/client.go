@@ -23,7 +23,13 @@ type Client interface {
 	// Deployments
 	PostDeploymentMetadata(*DeploymentMetadata, *gocql.Batch) *UpsertResult
 	PostDeployment(*Deployment) *UpsertResult
+	// Metadata
+	FetchDeploymentsMetadata(*DeploymentMetadata) ([]*DeploymentMetadata, error)
 }
+
+const (
+	DefaultLimit = 500
+)
 
 type User struct {
 	Id    *gocql.UUID `cql:"id"`
@@ -197,7 +203,7 @@ func (self *CassClient) UpdateBeacons(beacons []*Beacon) *UpsertResult {
 
 }
 
-// FetchBeacons takes a slice of Beacons with primary keys defined, fetches the remaining data, & updates the structs
+// FetchBeacon takes a slice of Beacons with primary keys defined, fetches the remaining data, & updates the structs
 func (self *CassClient) FetchBeacon(bkn *Beacon) (*Beacon, error) {
 	resBkn := Beacon{
 		UserId: bkn.UserId,
@@ -310,6 +316,30 @@ func (self *CassClient) PostDeploymentMetadata(md *DeploymentMetadata, batch *go
 
 }
 
+// FetchDeploymentsMetadata
+func (self *CassClient) FetchDeploymentsMetadata(md *DeploymentMetadata) ([]*DeploymentMetadata, error) {
+	resRows := make([]*DeploymentMetadata, 0)
+	iter := self.Sess.Query(`SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? LIMIT ?`, md.UserId, DefaultLimit).Iter()
+	shell := map[string]interface{}{}
+	for iter.MapScan(shell) {
+		id := shell["user_id"].(gocql.UUID)
+		resRows = append(resRows, &DeploymentMetadata{
+			UserId:      &id,
+			DeployName:  shell["deploy_name"].(string),
+			MessageName: shell["message_name"].(string),
+		})
+
+		// since shell is used in each iteration, we must clear it.
+		shell = map[string]interface{}{}
+	}
+
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+	return resRows, nil
+
+}
+
 // Deployments ------------------------------------------------------------------------------
 
 // PostDeployment writes the current deployname to every beacon in the list via an update clause, causing any now-invalid records in the deployments materialized view (on top of beacons) to be deleted via a partition drop (& subsequently recreated)
@@ -388,9 +418,6 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 
 // FetchDeploymentBeacons uses the deployments materialized view to gather a list of beacons associated with a deployment.
 // func FetchDeploymentBeacons() {}
-
-// FetchDeploymentMetadata fetches the metadata record for a deployment
-// func FetchDeploymentMetadata() {}
 
 // Helpers
 

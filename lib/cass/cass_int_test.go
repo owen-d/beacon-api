@@ -338,6 +338,18 @@ func TestPostDeploymentMetadata(t *testing.T) {
 		testBatch(t, res, client, batch)
 	})
 
+	t.Run("fetch", func(t *testing.T) {
+		md := DeploymentMetadata{
+			UserId: &uuid,
+		}
+
+		_, err := client.FetchDeploymentsMetadata(&md)
+
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
 }
 
 func TestPostDeployment(t *testing.T) {
