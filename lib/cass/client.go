@@ -26,6 +26,7 @@ type Client interface {
 	FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, error)
 	// Metadata
 	FetchDeploymentsMetadata(*Deployment) ([]*Deployment, error)
+	FetchDeploymentMetadata(*Deployment) ([]*Deployment, error)
 }
 
 const (
@@ -336,7 +337,22 @@ func (self *CassClient) FetchDeploymentsMetadata(dep *Deployment) ([]*Deployment
 		return nil, err
 	}
 	return resRows, nil
+}
 
+// FetchDeploymentMetadata is the single version of FetchDeploymentsMetadata. It requires a DeployName.
+func (self *CassClient) FetchDeploymentMetadata(dep *Deployment) (*Deployment, error) {
+	res := &Deployment{}
+	template := `SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? AND deploy_name = ? LIMIT 1`
+	args := []interface{}{
+		dep.UserId,
+		dep.DeployName,
+	}
+	err := self.Sess.Query(template, args...).Scan(&res.UserId, &res.DeployName, &res.MessageName)
+
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // Deployments ------------------------------------------------------------------------------
@@ -445,6 +461,55 @@ func (self *CassClient) FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, erro
 
 }
 
+// FetchDeployment will fetch & merge both the deployment metadata & the beacons belonging to it
+func (self *CassClient) FetchDeployment(dep *Deployment) (*Deployment, error) {
+	res := &Deployment{
+		UserId:     dep.UserId,
+		DeployName: dep.DeployName,
+	}
+
+	errCh := make(chan error, 2)
+	metaCh := make(chan *Deployment)
+	bknsCh := make(chan []*Beacon)
+
+	// Fetch metadata
+	go func(ch chan<- *Deployment, errCh chan<- error) {
+		meta, metaErr := self.FetchDeploymentMetadata(dep)
+		if metaErr != nil {
+			errCh <- metaErr
+			return
+		}
+		ch <- meta
+		close(ch)
+		return
+
+	}(metaCh, errCh)
+	// Fetch beacons & merge
+	go func(ch chan<- []*Beacon, errCh chan<- error) {
+		bkns, err := self.FetchDeploymentBeacons(dep)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		ch <- bkns
+		close(ch)
+		return
+	}(bknsCh, errCh)
+
+	for i := 0; i < 2; i++ {
+		select {
+		case meta := <-metaCh:
+			res.MessageName = meta.MessageName
+		case bkns := <-bknsCh:
+			res.BeaconNames = mapBeaconNames(bkns)
+		// If we pull an error, return through
+		case err := <-errCh:
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 // Helpers
 
 //dispatcher is a private struct which will receive commands & execute them in goroutines. You may then await the channel for responses.
@@ -466,4 +531,13 @@ func newDispatcher() *dispatcher {
 		Ch: make(chan *UpsertResult),
 		Ct: 0,
 	}
+}
+
+func mapBeaconNames(bkns []*Beacon) []string {
+	res := make([]string, 0, len(bkns))
+
+	for _, bkn := range bkns {
+		res = append(res, bkn.Name)
+	}
+	return res
 }

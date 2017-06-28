@@ -350,7 +350,29 @@ func TestPostDeploymentMetadata(t *testing.T) {
 			t.Error(err)
 		}
 	})
+}
 
+func TestFetchDeploymentMetadata(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+	dep := &Deployment{
+		UserId:     &uuid,
+		DeployName: prepopDName,
+	}
+	t.Run("single", func(t *testing.T) {
+		_, err := client.FetchDeploymentMetadata(dep)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	t.Run("multi", func(t *testing.T) {
+		_, err := client.FetchDeploymentsMetadata(dep)
+		if err != nil {
+			t.Error(err)
+		}
+	})
 }
 
 func TestPostDeployment(t *testing.T) {
@@ -424,4 +446,22 @@ func TestFetchDeploymentBeacons(t *testing.T) {
 		t.Error(err)
 	}
 
+}
+
+func TestFetchDeployment(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	dep := Deployment{
+		UserId:     &uuid,
+		DeployName: prepopDName,
+	}
+
+	_, err := client.FetchDeployment(&dep)
+
+	if err != nil {
+		t.Error(err)
+	}
 }
