@@ -11,6 +11,7 @@ const (
 	prepopEmail = "test.email@gmail.com"
 	prepopBName = "a1"
 	prepopMName = "first_msg"
+	prepopDName = "dep1"
 )
 
 // need to be able to call subtest on cmd.
@@ -404,4 +405,23 @@ func TestPostDeployment(t *testing.T) {
 			t.Error("failed to post deployment:", res.Err)
 		}
 	})
+}
+
+func TestFetchDeploymentBeacons(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	dep := Deployment{
+		UserId:     &uuid,
+		DeployName: prepopDName,
+	}
+
+	_, err := client.FetchDeploymentBeacons(&dep)
+
+	if err != nil {
+		t.Error(err)
+	}
+
 }

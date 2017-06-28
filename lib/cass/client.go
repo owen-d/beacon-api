@@ -23,6 +23,7 @@ type Client interface {
 	// Deployments
 	PostDeploymentMetadata(*Deployment, *gocql.Batch) *UpsertResult
 	PostDeployment(*Deployment) *UpsertResult
+	FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, error)
 	// Metadata
 	FetchDeploymentsMetadata(*Deployment) ([]*Deployment, error)
 }
@@ -312,7 +313,12 @@ func (self *CassClient) PostDeploymentMetadata(dep *Deployment, batch *gocql.Bat
 // FetchDeploymentsMetadata
 func (self *CassClient) FetchDeploymentsMetadata(dep *Deployment) ([]*Deployment, error) {
 	resRows := make([]*Deployment, 0)
-	iter := self.Sess.Query(`SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? LIMIT ?`, dep.UserId, DefaultLimit).Iter()
+	template := `SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? LIMIT ?`
+	args := []interface{}{
+		dep.UserId,
+		DefaultLimit,
+	}
+	iter := self.Sess.Query(template, args...).Iter()
 	shell := map[string]interface{}{}
 	for iter.MapScan(shell) {
 		id := shell["user_id"].(gocql.UUID)
@@ -410,7 +416,34 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 }
 
 // FetchDeploymentBeacons uses the deployments materialized view to gather a list of beacons associated with a deployment.
-// func FetchDeploymentBeacons() {}
+func (self *CassClient) FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, error) {
+	resRows := make([]*Beacon, 0)
+	template := `SELECT user_id, deploy_name, name FROM beacon_deployments WHERE user_id = ? AND deploy_name = ? LIMIT ?`
+	args := []interface{}{
+		dep.UserId,
+		dep.DeployName,
+		DefaultLimit,
+	}
+	iter := self.Sess.Query(template, args...).Iter()
+	shell := map[string]interface{}{}
+	for iter.MapScan(shell) {
+		id := shell["user_id"].(gocql.UUID)
+		resRows = append(resRows, &Beacon{
+			UserId:     &id,
+			DeployName: shell["deploy_name"].(string),
+			Name:       shell["name"].(string),
+		})
+
+		// since shell is used in each iteration, we must clear it.
+		shell = map[string]interface{}{}
+	}
+
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+	return resRows, nil
+
+}
 
 // Helpers
 
