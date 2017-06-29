@@ -8,15 +8,16 @@ import (
 	"github.com/owen-d/beacon-api/lib/cass"
 	"github.com/owen-d/beacon-api/lib/route"
 	"github.com/owen-d/beacon-api/lib/validator"
+	"github.com/urfave/negroni"
 	"google.golang.org/api/proximitybeacon/v1beta1"
 	"io/ioutil"
 	"net/http"
 )
 
 type DeploymentRoutes interface {
-	PostDeployment(http.ResponseWriter, *http.Request)
-	FetchDeploymentsMetadata(http.ResponseWriter, *http.Request)
-	FetchDeploymentByName(http.ResponseWriter, *http.Request)
+	PostDeployment(http.ResponseWriter, *http.Request, http.HandlerFunc)
+	FetchDeploymentsMetadata(http.ResponseWriter, *http.Request, http.HandlerFunc)
+	FetchDeploymentByName(http.ResponseWriter, *http.Request, http.HandlerFunc)
 }
 
 type DeploymentMethods struct {
@@ -85,12 +86,13 @@ func (self *Deployment) ToCass() (*cass.Deployment, error) {
 }
 
 // PostDeployment is middleware which creates a deployment (composed of its parts) in cassandra
-func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Request) {
+func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 
 	deployment := &Deployment{}
 
 	if invalid := deployment.Validate(r); invalid != nil {
 		invalid.Flush(rw)
+		next(rw, r)
 		return
 	}
 
@@ -99,6 +101,7 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 	if castErr != nil {
 		err := &validator.RequestErr{500, castErr.Error()}
 		err.Flush(rw)
+		next(rw, r)
 		return
 	}
 
@@ -107,6 +110,7 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 	if res.Err != nil {
 		err := &validator.RequestErr{500, res.Err.Error()}
 		err.Flush(rw)
+		next(rw, r)
 		return
 	}
 
@@ -170,31 +174,34 @@ func (self *DeploymentMethods) postAttachments(bNames []string, attachment *beac
 	return res
 }
 
-func (self *DeploymentMethods) FetchDeploymentsMetadata(rw http.ResponseWriter, r *http.Request) {}
-func (self *DeploymentMethods) FetchDeploymentByName(rw http.ResponseWriter, r *http.Request)    {}
+func (self *DeploymentMethods) FetchDeploymentsMetadata(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+}
+func (self *DeploymentMethods) FetchDeploymentByName(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+}
 
 // Router instantiates a Router object from the related lib
 func (self *DeploymentMethods) Router() *route.Router {
 	endpoints := []*route.Endpoint{
 		&route.Endpoint{
-			Method: "GET",
-			Fns:    []http.HandlerFunc{self.FetchDeploymentsMetadata},
+			Method:   "GET",
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.FetchDeploymentsMetadata)},
 		},
 		&route.Endpoint{
-			Method: "POST",
-			Fns:    []http.HandlerFunc{self.PostDeployment},
+			Method:   "POST",
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.PostDeployment)},
 		},
 		// /:id routes
 		&route.Endpoint{
-			Method:  "GET",
-			Fns:     []http.HandlerFunc{self.FetchDeploymentByName},
-			SubPath: "/:id",
+			Method:   "GET",
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.FetchDeploymentByName)},
+			SubPath:  "/:id",
 		},
 	}
 
 	r := route.Router{
-		Path:      "/deployments",
-		Endpoints: endpoints,
+		Path:              "/deployments",
+		Endpoints:         endpoints,
+		DefaultMiddleware: []negroni.Handler{negroni.HandlerFunc(self.JWTDecoder.Validate)},
 	}
 
 	return &r
