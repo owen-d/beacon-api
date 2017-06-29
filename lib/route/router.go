@@ -26,7 +26,7 @@ func (r *Router) build(rootRouter *mux.Router, prependMiddleware []negroni.Handl
 
 	// inherit default middleware from parent
 	concatedDefaultMiddleware := make([]negroni.Handler, 0, len(prependMiddleware)+len(r.DefaultMiddleware))
-	copy(concatedDefaultMiddleware, prependMiddleware)
+	concatedDefaultMiddleware = append(concatedDefaultMiddleware, prependMiddleware...)
 	r.DefaultMiddleware = append(concatedDefaultMiddleware, r.DefaultMiddleware...)
 
 	// instantiate a new negroni middleware manageer,

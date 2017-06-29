@@ -7,6 +7,7 @@ import (
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/cass"
 	"github.com/owen-d/beacon-api/lib/route"
+	"github.com/urfave/negroni"
 )
 
 type Env struct {
@@ -21,8 +22,9 @@ func (self *Env) Init() *route.Router {
 	deployments := deployments.DeploymentMethods{JWTDecoder, self.BeaconClient, self.CassClient}
 
 	root := &route.Router{
-		Path:      "/",
-		SubRoutes: []*route.Router{beacons.Router(), deployments.Router()},
+		Path:              "/",
+		SubRoutes:         []*route.Router{beacons.Router(), deployments.Router()},
+		DefaultMiddleware: []negroni.Handler{negroni.NewLogger()},
 	}
 
 	return route.BuildRouter(root)
