@@ -12,13 +12,6 @@ type Endpoint struct {
 	SubPath  string
 }
 
-func Attach(n *negroni.Negroni, handlers []negroni.Handler) *negroni.Negroni {
-	for _, handler := range handlers {
-		n.Use(handler)
-	}
-	return n
-}
-
 type Router struct {
 	Path              string
 	Router            *mux.Router
@@ -27,15 +20,14 @@ type Router struct {
 	Endpoints         []*Endpoint
 }
 
-func (r *Router) build(rootRouter *mux.Router) {
+func (r *Router) build(rootRouter *mux.Router, prependMiddleware []negroni.Handler) {
 	// build a new router from the path prefix, upon which all subsequent method routs will be mounted
-	if len(r.DefaultMiddleware) == 0 {
-		r.Router = rootRouter.PathPrefix(r.Path).Subrouter().StrictSlash(true)
-	} else {
-		// if DefaultMiddleware is specified, we apply it to all endpoints derived from this router
-		handler := Attach(negroni.New(), r.DefaultMiddleware)
-		r.Router = rootRouter.PathPrefix(r.Path).Handler(handler).Subrouter().StrictSlash(true)
-	}
+	r.Router = rootRouter.PathPrefix(r.Path).Subrouter().StrictSlash(true)
+
+	// inherit default middleware from parent
+	concatedDefaultMiddleware := make([]negroni.Handler, 0, len(prependMiddleware)+len(r.DefaultMiddleware))
+	copy(concatedDefaultMiddleware, prependMiddleware)
+	r.DefaultMiddleware = append(concatedDefaultMiddleware, r.DefaultMiddleware...)
 
 	// instantiate a new negroni middleware manageer,
 	// attach all the middleware functions to it, & bind those functions to a method on a subrouter
@@ -47,21 +39,21 @@ func (r *Router) build(rootRouter *mux.Router) {
 			sPath = "/"
 		}
 
-		handler := Attach(negroni.New(), endpoint.Handlers)
+		handler := negroni.New(r.DefaultMiddleware...).With(endpoint.Handlers...)
 		r.Router.Handle(sPath, handler).Methods(endpoint.Method)
 	}
 
 	//recursively build subroutes
 	for _, route := range r.SubRoutes {
-		route.build(r.Router)
+		route.build(r.Router, r.DefaultMiddleware)
 	}
 }
 
-// BuildRouter recursively builds all routes & related middleware via annotations, returning the resulting mux router.
+// BuildRouter recursively builds all routes & related middleware via endpoints, returning the resulting mux router.
 func BuildRouter(root *Router) *Router {
 	// base case, must instantiate a new router
 	// recursive call to build all deps
-	root.build(mux.NewRouter())
+	root.build(mux.NewRouter(), nil)
 	return root
 
 }
