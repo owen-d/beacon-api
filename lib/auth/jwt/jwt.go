@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	jwtGo "github.com/dgrijalva/jwt-go"
@@ -10,7 +11,7 @@ import (
 )
 
 var (
-	jwtKeyword       = "x-jwt"
+	JwtKeyword       = "x-jwt"
 	JWTNamespace key = key{jwtKeyword}
 )
 
@@ -58,7 +59,7 @@ func (self *Decoder) Validate(rw http.ResponseWriter, r *http.Request, next http
 		return
 	}
 
-	_, err := self.Decode(jwtStr)
+	bindings, err := self.Decode(jwtStr)
 
 	if err != nil {
 		err := &validator.RequestErr{Status: 401, Message: err.Error()}
@@ -66,7 +67,8 @@ func (self *Decoder) Validate(rw http.ResponseWriter, r *http.Request, next http
 		return
 	}
 
-	next(rw, r)
+	newCtx := context.WithValue(r.Context(), JWTNamespace, bindings)
+	next(rw, r.WithContext(newCtx))
 
 }
 
@@ -91,3 +93,10 @@ func (self *Bindings) ConvertFromJwt(claims jwtGo.MapClaims) error {
 	self.UserId = &userId
 	return nil
 }
+
+// Encoder is a wrapper struct which handles encoding
+type Encoder struct {
+	Secret []byte
+}
+
+func (self *Encoder) Encode() {}
