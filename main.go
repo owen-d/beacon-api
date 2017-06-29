@@ -51,7 +51,7 @@ func main() {
 	cassClient := createLocalhostCassClient("bkn")
 
 	// inject necessary backend (google api svc) into env
-	env := api.Env{svc, cassClient}
+	env := api.Env{svc, cassClient, []byte(conf.JWTSecret)}
 
 	// build router from bound env
 	router := env.Init()

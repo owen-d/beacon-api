@@ -3,6 +3,7 @@ package deployments
 import (
 	"encoding/json"
 	"github.com/gocql/gocql"
+	"github.com/owen-d/beacon-api/lib/auth/jwt"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/cass"
 	"github.com/owen-d/beacon-api/lib/route"
@@ -19,6 +20,7 @@ type DeploymentRoutes interface {
 }
 
 type DeploymentMethods struct {
+	JWTDecoder   jwt.Decoder
 	BeaconClient beaconclient.Client
 	CassClient   cass.Client
 }

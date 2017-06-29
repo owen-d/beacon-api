@@ -26,7 +26,7 @@ type Client interface {
 	FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, error)
 	// Metadata
 	FetchDeploymentsMetadata(*Deployment) ([]*Deployment, error)
-	FetchDeploymentMetadata(*Deployment) ([]*Deployment, error)
+	FetchDeploymentMetadata(*Deployment) (*Deployment, error)
 }
 
 const (

@@ -8,6 +8,7 @@ import (
 type JsonConfig struct {
 	Scope            string `json:"scope"`
 	GCloudConfigPath string `json:"gCloudConfigPath"`
+	JWTSecret        string
 }
 
 func LoadConfFromFile(fPath string) (*JsonConfig, error) {
