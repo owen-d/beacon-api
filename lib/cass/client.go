@@ -15,6 +15,7 @@ type Client interface {
 	CreateBeacons([]*Beacon, *gocql.Batch) *UpsertResult
 	UpdateBeacons([]*Beacon) *UpsertResult
 	FetchBeacon(*Beacon) (*Beacon, error)
+	FetchUserBeacons(*gocql.UUID) ([]*Beacon, error)
 	// Messages
 	CreateMessage(*Message, *gocql.Batch) *UpsertResult
 	AddMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
@@ -40,9 +41,9 @@ type User struct {
 }
 
 type Beacon struct {
-	UserId     *gocql.UUID `cql:"user_id"`
-	DeployName string      `cql:"deploy_name"`
-	Name       string      `cql:"name"`
+	UserId     *gocql.UUID `cql:"user_id" json:"user_id"`
+	DeployName string      `cql:"deploy_name" json:"deploy_name"`
+	Name       string      `cql:"name" json:"name"`
 }
 
 type Message struct {
@@ -214,6 +215,36 @@ func (self *CassClient) FetchBeacon(bkn *Beacon) (*Beacon, error) {
 
 	err := self.Sess.Query(template, cmd...).Scan(&resBkn.UserId, &resBkn.DeployName)
 	return &resBkn, err
+}
+
+// FetchUserBeacons returns a slice of beacons belonging to a user
+func (self *CassClient) FetchUserBeacons(userId *gocql.UUID) ([]*Beacon, error) {
+	template := `SELECT user_id, deploy_name, name FROM beacons WHERE user_id = ? LIMIT ?`
+	args := []interface{}{
+		userId,
+		DefaultLimit,
+	}
+
+	resRows := make([]*Beacon, 0)
+	iter := self.Sess.Query(template, args...).Iter()
+	shell := map[string]interface{}{}
+	for iter.MapScan(shell) {
+		id := shell["user_id"].(gocql.UUID)
+		resRows = append(resRows, &Beacon{
+			UserId:     &id,
+			DeployName: shell["deploy_name"].(string),
+			Name:       shell["name"].(string),
+		})
+
+		// since shell is used in each iteration, we must clear it.
+		shell = map[string]interface{}{}
+	}
+
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+	return resRows, nil
+
 }
 
 // Messages ------------------------------------------------------------------------------
