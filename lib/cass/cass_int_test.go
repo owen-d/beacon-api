@@ -42,6 +42,10 @@ func testBatch(t *testing.T, res *UpsertResult, client *CassClient, batch *gocql
 	}
 }
 
+func TestFulfillsInterface(t *testing.T) {
+	var _ Client = createLocalhostClient("bkn")
+}
+
 func TestCreateUser(t *testing.T) {
 	client := createLocalhostClient("bkn")
 	defer client.Sess.Close()

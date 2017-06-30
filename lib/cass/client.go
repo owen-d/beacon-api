@@ -21,6 +21,7 @@ type Client interface {
 	RemoveMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
 	FetchMessage(*Message) (*Message, error)
 	// Deployments
+	FetchDeployment(*Deployment) (*Deployment, error)
 	PostDeploymentMetadata(*Deployment, *gocql.Batch) *UpsertResult
 	PostDeployment(*Deployment) *UpsertResult
 	FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, error)
