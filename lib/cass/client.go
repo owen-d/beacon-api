@@ -481,7 +481,6 @@ func (self *CassClient) FetchDeployment(dep *Deployment) (*Deployment, error) {
 			return
 		}
 		ch <- meta
-		close(ch)
 		return
 
 	}(metaCh, errCh)
@@ -493,7 +492,6 @@ func (self *CassClient) FetchDeployment(dep *Deployment) (*Deployment, error) {
 			return
 		}
 		ch <- bkns
-		close(ch)
 		return
 	}(bknsCh, errCh)
 
