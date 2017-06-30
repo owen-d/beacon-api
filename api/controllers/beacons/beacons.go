@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"github.com/owen-d/beacon-api/lib/auth/jwt"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
+	"github.com/owen-d/beacon-api/lib/cass"
 	"github.com/owen-d/beacon-api/lib/route"
+	"github.com/owen-d/beacon-api/lib/validator"
 	"github.com/urfave/negroni"
-	"google.golang.org/api/proximitybeacon/v1beta1"
 	"net/http"
 )
 
@@ -18,17 +19,24 @@ type BeaconRoutes interface {
 }
 
 type BeaconMethods struct {
-	JWTDecoder jwt.Decoder
-	Client     beaconclient.Client
+	JWTDecoder   jwt.Decoder
+	BeaconClient beaconclient.Client
+	CassClient   cass.Client
 }
 
 type BeaconResponse struct {
-	Beacons []*proximitybeacon.Beacon `json:"beacons"`
+	Beacons []*cass.Beacon `json:"beacons"`
 }
 
 func (self *BeaconMethods) GetBeacons(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	res, _ := self.Client.GetOwnedBeaconNames()
-	beacons := res.Beacons
+	bindings := r.Context().Value(jwt.JWTNamespace).(*jwt.Bindings)
+	beacons, fetchErr := self.CassClient.FetchUserBeacons(bindings.UserId)
+
+	if fetchErr != nil {
+		err := &validator.RequestErr{Status: 500, Message: fetchErr.Error()}
+		err.Flush(rw)
+		return
+	}
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)

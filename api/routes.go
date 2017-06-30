@@ -19,7 +19,7 @@ type Env struct {
 func (self *Env) Init() *route.Router {
 
 	JWTDecoder := jwt.Decoder{self.JWTSecret}
-	beacons := beacons.BeaconMethods{JWTDecoder, self.BeaconClient}
+	beacons := beacons.BeaconMethods{JWTDecoder, self.BeaconClient, self.CassClient}
 	deployments := deployments.DeploymentMethods{JWTDecoder, self.BeaconClient, self.CassClient}
 
 	root := &route.Router{
