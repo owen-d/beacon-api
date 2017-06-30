@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	JwtKeyword       = "x-jwt"
-	JWTNamespace key = key{JwtKeyword}
+	JWTKeyword       = "x-jwt"
+	JWTNamespace key = key{JWTKeyword}
 )
 
 // alias string as a namespaced type to avoid collisions when used w/ context map. Unexported
@@ -52,7 +52,7 @@ func (self *Decoder) Decode(unparsed string) (*Bindings, error) {
 
 // Validate ensures a request passes authentication
 func (self *Decoder) Validate(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	jwtStr := r.Header.Get(JwtKeyword)
+	jwtStr := r.Header.Get(JWTKeyword)
 
 	if jwtStr == "" {
 		err := &validator.RequestErr{Status: http.StatusUnauthorized, Message: "Authentication required"}

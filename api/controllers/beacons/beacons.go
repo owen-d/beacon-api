@@ -2,6 +2,7 @@ package beacons
 
 import (
 	"encoding/json"
+	"github.com/owen-d/beacon-api/lib/auth/jwt"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/route"
 	"github.com/urfave/negroni"
@@ -17,7 +18,8 @@ type BeaconRoutes interface {
 }
 
 type BeaconMethods struct {
-	Client beaconclient.Client
+	JWTDecoder jwt.Decoder
+	Client     beaconclient.Client
 }
 
 type BeaconResponse struct {
@@ -45,8 +47,9 @@ func (self *BeaconMethods) Router() *route.Router {
 	}
 
 	r := route.Router{
-		Path:      "/beacons",
-		Endpoints: endpoints,
+		Path:              "/beacons",
+		Endpoints:         endpoints,
+		DefaultMiddleware: []negroni.Handler{negroni.HandlerFunc(self.JWTDecoder.Validate)},
 	}
 
 	return &r
