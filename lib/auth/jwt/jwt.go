@@ -8,11 +8,12 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/owen-d/beacon-api/lib/validator"
 	"net/http"
+	"time"
 )
 
 var (
 	JwtKeyword       = "x-jwt"
-	JWTNamespace key = key{jwtKeyword}
+	JWTNamespace key = key{JwtKeyword}
 )
 
 // alias string as a namespaced type to avoid collisions when used w/ context map. Unexported
@@ -51,7 +52,7 @@ func (self *Decoder) Decode(unparsed string) (*Bindings, error) {
 
 // Validate ensures a request passes authentication
 func (self *Decoder) Validate(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	jwtStr := r.Header.Get(jwtKeyword)
+	jwtStr := r.Header.Get(JwtKeyword)
 
 	if jwtStr == "" {
 		err := &validator.RequestErr{Status: http.StatusUnauthorized, Message: "Authentication required"}
@@ -80,8 +81,9 @@ type Bindings struct {
 
 // ConvertFromJwtGo casts a *jwtGo.MapClaims into a Bindings struct
 func (self *Bindings) ConvertFromJwt(claims jwtGo.MapClaims) error {
-	idStr := claims["user_id"].(string)
-	if idStr != "" {
+	idStr, ok := claims["user_id"].(string)
+
+	if !ok || idStr == "" {
 		return errors.New("no user_id field")
 	}
 
@@ -99,4 +101,15 @@ type Encoder struct {
 	Secret []byte
 }
 
-func (self *Encoder) Encode() {}
+// Encode can be used to via enc.Encode(userIdString, time.Now().Add(time.Hour * 24 * 30).Unix())
+func (self *Encoder) Encode(userId gocql.UUID, expires int64) (string, error) {
+	claims := jwtGo.MapClaims{
+		"user_id": userId,
+		"exp":     expires,
+		"iat":     time.Now().Unix(),
+	}
+	token := jwtGo.NewWithClaims(jwtGo.SigningMethodHS256, claims)
+
+	return token.SignedString(self.Secret)
+
+}
