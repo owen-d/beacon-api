@@ -16,10 +16,12 @@ type RequestErr struct {
 }
 
 func (self *RequestErr) Flush(rw http.ResponseWriter) {
-	rw.WriteHeader(self.Status)
 	if self.Message == "" {
 		self.Message = http.StatusText(self.Status)
 	}
 	jsonData, _ := json.Marshal(self)
+	// Add headers to header map before flushing them with WriteHeader
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(self.Status)
 	rw.Write(jsonData)
 }
