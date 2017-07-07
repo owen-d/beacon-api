@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/gorilla/mux"
 	"github.com/owen-d/beacon-api/api/controllers/beacons"
 	"github.com/owen-d/beacon-api/api/controllers/deployments"
 	"github.com/owen-d/beacon-api/lib/auth/jwt"
@@ -29,7 +28,6 @@ func (self *Env) Init() http.Handler {
 		SubRoutes: []*route.Router{beacons.Router(), deployments.Router()},
 	}
 
-	muxRouter := mux.NewRouter()
-	route.BuildRouter(root, muxRouter)
-	return route.Encase(root.Router, negroni.New(negroni.NewLogger(), route.CorsHandler))
+	root = route.BuildRouter(root, nil)
+	return negroni.New(negroni.NewLogger(), route.CorsHandler, negroni.Wrap(root.Router))
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni"
-	"net/http"
 )
 
 var (
@@ -65,14 +64,4 @@ func BuildRouter(root *Router, initRouter *mux.Router) *Router {
 	root.build(initRouter, nil)
 	return root
 
-}
-
-func Encase(initHandler http.Handler, prependMiddlewares ...http.Handler) http.Handler {
-	resHandler := negroni.New()
-	for _, h := range prependMiddlewares {
-		resHandler.UseHandler(h)
-	}
-
-	resHandler.UseHandler(initHandler)
-	return resHandler
 }
