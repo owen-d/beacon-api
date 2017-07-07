@@ -58,6 +58,7 @@ func (self *BeaconMethods) Router() *route.Router {
 		Path:              "/beacons",
 		Endpoints:         endpoints,
 		DefaultMiddleware: []negroni.Handler{negroni.HandlerFunc(self.JWTDecoder.Validate)},
+		Name:              "beaconRouter",
 	}
 
 	return &r

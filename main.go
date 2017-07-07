@@ -54,9 +54,9 @@ func main() {
 	env := api.Env{svc, cassClient, []byte(conf.JWTSecret)}
 
 	// build router from bound env
-	router := env.Init()
+	handler := env.Init()
 
-	http.ListenAndServe(":8080", router.Router)
+	http.ListenAndServe(":8080", handler)
 
 }
 

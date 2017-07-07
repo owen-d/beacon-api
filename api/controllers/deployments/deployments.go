@@ -202,6 +202,7 @@ func (self *DeploymentMethods) Router() *route.Router {
 		Path:              "/deployments",
 		Endpoints:         endpoints,
 		DefaultMiddleware: []negroni.Handler{negroni.HandlerFunc(self.JWTDecoder.Validate)},
+		Name:              "deploymentsRouter",
 	}
 
 	return &r
