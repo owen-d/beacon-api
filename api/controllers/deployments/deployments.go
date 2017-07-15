@@ -26,6 +26,10 @@ type DeploymentMethods struct {
 	CassClient   cass.Client
 }
 
+type DeploymentsResponse struct {
+	Deployments []*cass.Deployment `json:"deployments"`
+}
+
 type Deployment struct {
 	UserId      string   `json:"user_id"`
 	Name        string   `json:"name"`
@@ -175,6 +179,23 @@ func (self *DeploymentMethods) postAttachments(bNames []string, attachment *beac
 }
 
 func (self *DeploymentMethods) FetchDeploymentsMetadata(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	bindings := r.Context().Value(jwt.JWTNamespace).(*jwt.Bindings)
+
+	mds, fetchErr := self.CassClient.FetchDeploymentsMetadata(bindings.UserId)
+
+	if fetchErr != nil {
+		err := &validator.RequestErr{Status: 500, Message: fetchErr.Error()}
+		err.Flush(rw)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+
+	data, _ := json.Marshal(DeploymentsResponse{mds})
+
+	rw.Write(data)
+
 }
 func (self *DeploymentMethods) FetchDeploymentByName(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 }
