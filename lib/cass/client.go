@@ -27,8 +27,8 @@ type Client interface {
 	PostDeployment(*Deployment) *UpsertResult
 	FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, error)
 	// Metadata
-	FetchDeploymentsMetadata(*Deployment) ([]*Deployment, error)
-	FetchDeploymentMetadata(*Deployment) (*Deployment, error)
+	FetchDeploymentsMetadata(*gocql.UUID) ([]*Deployment, error)
+	FetchDeploymentMetadata(*gocql.UUID, string) (*Deployment, error)
 }
 
 const (
@@ -47,22 +47,22 @@ type Beacon struct {
 }
 
 type Message struct {
-	UserId      *gocql.UUID `cql:"user_id"`
-	Name        string      `cql:"name"`
-	Title       string      `cql:"title"`
-	Url         string      `cql:"url"`
-	Lang        string      `cql:"lang"`
-	Deployments []string    `cql:"deployments"`
+	UserId      *gocql.UUID `cql:"user_id" json:"user_id"`
+	Name        string      `cql:"name" json:"name"`
+	Title       string      `cql:"title" json:"title"`
+	Url         string      `cql:"url" json:"url"`
+	Lang        string      `cql:"lang" json:"lang"`
+	Deployments []string    `cql:"deployments" json:"deployments"`
 }
 
 // Deployment is not an actual data structure stored in cassandra, but rather a construct that we disassemble into beacons. If a MessageName is provided, we will read/use that
 // for settting a deployment method, otherwise creating a message if the Message field is set.
 type Deployment struct {
-	UserId      *gocql.UUID
-	DeployName  string
-	MessageName string
-	Message     *Message
-	BeaconNames []string
+	UserId      *gocql.UUID `json:"user_id"`
+	DeployName  string      `json:"name"`
+	MessageName string      `json:"message_name,omitempty"`
+	Message     *Message    `json:"message,omitempty"`
+	BeaconNames []string    `json::"beacon_names"`
 }
 
 type CassClient struct {
@@ -344,11 +344,11 @@ func (self *CassClient) PostDeploymentMetadata(dep *Deployment, batch *gocql.Bat
 }
 
 // FetchDeploymentsMetadata
-func (self *CassClient) FetchDeploymentsMetadata(dep *Deployment) ([]*Deployment, error) {
+func (self *CassClient) FetchDeploymentsMetadata(userId *gocql.UUID) ([]*Deployment, error) {
 	resRows := make([]*Deployment, 0)
 	template := `SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? LIMIT ?`
 	args := []interface{}{
-		dep.UserId,
+		userId,
 		DefaultLimit,
 	}
 	iter := self.Sess.Query(template, args...).Iter()
@@ -372,12 +372,12 @@ func (self *CassClient) FetchDeploymentsMetadata(dep *Deployment) ([]*Deployment
 }
 
 // FetchDeploymentMetadata is the single version of FetchDeploymentsMetadata. It requires a DeployName.
-func (self *CassClient) FetchDeploymentMetadata(dep *Deployment) (*Deployment, error) {
+func (self *CassClient) FetchDeploymentMetadata(userId *gocql.UUID, depName string) (*Deployment, error) {
 	res := &Deployment{}
 	template := `SELECT user_id, deploy_name, message_name FROM deployments_metadata WHERE user_id = ? AND deploy_name = ? LIMIT 1`
 	args := []interface{}{
-		dep.UserId,
-		dep.DeployName,
+		userId,
+		depName,
 	}
 	err := self.Sess.Query(template, args...).Scan(&res.UserId, &res.DeployName, &res.MessageName)
 
@@ -506,7 +506,7 @@ func (self *CassClient) FetchDeployment(dep *Deployment) (*Deployment, error) {
 
 	// Fetch metadata
 	go func(ch chan<- *Deployment, errCh chan<- error) {
-		meta, metaErr := self.FetchDeploymentMetadata(dep)
+		meta, metaErr := self.FetchDeploymentMetadata(dep.UserId, dep.DeployName)
 		if metaErr != nil {
 			errCh <- metaErr
 			return

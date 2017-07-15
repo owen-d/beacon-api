@@ -348,7 +348,7 @@ func TestPostDeploymentMetadata(t *testing.T) {
 			UserId: &uuid,
 		}
 
-		_, err := client.FetchDeploymentsMetadata(&dep)
+		_, err := client.FetchDeploymentsMetadata(dep.UserId)
 
 		if err != nil {
 			t.Error(err)
@@ -366,13 +366,13 @@ func TestFetchDeploymentMetadata(t *testing.T) {
 		DeployName: prepopDName,
 	}
 	t.Run("single", func(t *testing.T) {
-		_, err := client.FetchDeploymentMetadata(dep)
+		_, err := client.FetchDeploymentMetadata(dep.UserId, dep.DeployName)
 		if err != nil {
 			t.Error(err)
 		}
 	})
 	t.Run("multi", func(t *testing.T) {
-		_, err := client.FetchDeploymentsMetadata(dep)
+		_, err := client.FetchDeploymentsMetadata(dep.UserId)
 		if err != nil {
 			t.Error(err)
 		}
