@@ -62,7 +62,7 @@ type Deployment struct {
 	DeployName  string      `json:"name"`
 	MessageName string      `json:"message_name,omitempty"`
 	Message     *Message    `json:"message,omitempty"`
-	BeaconNames []string    `json::"beacon_names"`
+	BeaconNames []string    `json:"beacon_names"`
 }
 
 type CassClient struct {
