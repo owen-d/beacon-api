@@ -8,7 +8,13 @@ import (
 )
 
 var (
-	CorsHandler = cors.AllowAll()
+	tenMinutesInSeconds = 60 * 10
+	CorsHandler         = cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"HEAD", "GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowedHeaders: []string{"*"},
+		MaxAge:         tenMinutesInSeconds,
+	})
 )
 
 type Endpoint struct {
