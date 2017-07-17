@@ -57,6 +57,10 @@ func (self *Deployment) Validate(r *http.Request) *validator.RequestErr {
 		return &validator.RequestErr{Status: 400}
 	}
 
+	//assign userId into deployment (forcefully overwrite a potentially malicious userId)
+	bindings := r.Context().Value(jwt.JWTNamespace).(*jwt.Bindings)
+
+	self.UserId = bindings.UserId.String()
 	return nil
 }
 
