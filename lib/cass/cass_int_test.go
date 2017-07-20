@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	prepopId    = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-	prepopEmail = "test.email@gmail.com"
+	prepopId    = "6ba7b810-9dad-11d1-80b4-00c04fd430c9"
+	prepopEmail = "int-test.email@gmail.com"
 	prepopBName = "a1"
 	prepopMName = "first_msg"
 	prepopDName = "dep1"
