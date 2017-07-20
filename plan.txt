@@ -1,0 +1,17 @@
+---August 4: User accounts, beacon CRUD ops, web app live---
+basic crud workflow using backend/api/frontend - Monday 24th
+update data models - tuesday 25
+package in k8s/helm - friday 28
+https cert - monday 31st
+landing page - need mockups, then ~wed 2nd
+cassandra backups
+OAuth - fri 5th
+
+---August 12: Beacons can be registered without manual intervention, can redirect to http(s) links indiscriminately---
+beacon attachment validation - mon 7th
+beacon registration process - ~9th (needs some more thought on implementation)
+handling layer - http(s) support
+
+---August 20--- Payments, click metrics
+Rewrite handling layer in rust, add click metrics
+payment support
