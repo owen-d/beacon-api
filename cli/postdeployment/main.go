@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 
 func main() {
 	beacons, _ := GetBeacons()
+
 	dep := &deployments.Deployment{
 		UserId:      userId,
 		Name:        "live1",
@@ -32,7 +34,9 @@ func main() {
 	}
 
 	for _, b := range beacons.Beacons {
-		dep.BeaconNames = append(dep.BeaconNames, b.BeaconName)
+		if strings.HasPrefix(b.Name, "beacons/3!") {
+			dep.BeaconNames = append(dep.BeaconNames, b.Name)
+		}
 	}
 
 	// fmt.Printf("built:\n%+v\n", dep)
@@ -41,7 +45,10 @@ func main() {
 }
 
 func GetBeacons() (*bc.BeaconResponse, error) {
-	resp, _ := http.Get("http://localhost:8080/beacons/")
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", "http://localhost:8080/beacons", nil)
+	req.Header.Set("x-jwt", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MTQzOTYzOTksImlhdCI6MTQ5ODg0NDM5OSwidXNlcl9pZCI6IjZiYTdiODEwLTlkYWQtMTFkMS04MGI0LTAwYzA0ZmQ0MzBjOCJ9._Mn0COXwcs9l4NqqAbbosXWCTMentdy4xj9ZqgKhEF0")
+	resp, _ := client.Do(req)
 
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -59,7 +66,11 @@ func PostDeployment(dep *deployments.Deployment) {
 		log.Fatal(err)
 	}
 
-	resp, _ := http.Post("http://localhost:8080/deployments/", "application/json", bytes.NewReader(jsonData))
+	fmt.Println(string(jsonData))
+	client := &http.Client{}
+	req, _ := http.NewRequest("POST", "http://localhost:8080/deployments", bytes.NewReader(jsonData))
+	req.Header.Set("x-jwt", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MTQzOTYzOTksImlhdCI6MTQ5ODg0NDM5OSwidXNlcl9pZCI6IjZiYTdiODEwLTlkYWQtMTFkMS04MGI0LTAwYzA0ZmQ0MzBjOCJ9._Mn0COXwcs9l4NqqAbbosXWCTMentdy4xj9ZqgKhEF0")
+	resp, _ := client.Do(req)
 
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
