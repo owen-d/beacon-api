@@ -33,7 +33,7 @@ type DeploymentsResponse struct {
 type Deployment struct {
 	UserId      string   `json:"user_id"`
 	Name        string   `json:"name"`
-	BeaconNames []string `json:beacon_names"`
+	BeaconNames []string `json:"beacon_names"`
 	MessageName string   `json:"message_name`
 	Message     *Message `json:"message"`
 }
