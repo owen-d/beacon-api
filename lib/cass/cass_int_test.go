@@ -310,6 +310,25 @@ func TestFetchMessage(t *testing.T) {
 
 }
 
+func TestFetchMessages(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+
+	msg := Message{
+		UserId: &uuid,
+	}
+
+	_, err := client.FetchMessages(msg.UserId, 5)
+
+	if err != nil {
+		t.Error("failed to fetch msg:", err)
+		return
+	}
+
+}
+
 func TestPostDeploymentMetadata(t *testing.T) {
 	client := createLocalhostClient("bkn")
 	defer client.Sess.Close()

@@ -21,14 +21,15 @@ type Client interface {
 	AddMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
 	RemoveMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
 	FetchMessage(*Message) (*Message, error)
+	FetchMessages(*gocql.UUID, uint8) ([]*Message, error)
 	// Deployments
 	FetchDeployment(*Deployment) (*Deployment, error)
-	PostDeploymentMetadata(*Deployment, *gocql.Batch) *UpsertResult
 	PostDeployment(*Deployment) *UpsertResult
 	FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, error)
 	// Metadata
 	FetchDeploymentsMetadata(*gocql.UUID) ([]*Deployment, error)
 	FetchDeploymentMetadata(*gocql.UUID, string) (*Deployment, error)
+	PostDeploymentMetadata(*Deployment, *gocql.Batch) *UpsertResult
 }
 
 const (
@@ -47,7 +48,7 @@ type Beacon struct {
 }
 
 type Message struct {
-	UserId      *gocql.UUID `cql:"user_id" json:"user_id"`
+	UserId      *gocql.UUID `cql:"user_id" json:-`
 	Name        string      `cql:"name" json:"name"`
 	Title       string      `cql:"title" json:"title"`
 	Url         string      `cql:"url" json:"url"`
@@ -320,6 +321,38 @@ func (self *CassClient) FetchMessage(m *Message) (*Message, error) {
 
 	err := self.Sess.Query(template, args...).Scan(&resMsg.UserId, &resMsg.Name, &resMsg.Title, &resMsg.Url, &resMsg.Lang, &resMsg.Deployments)
 	return resMsg, err
+}
+
+func (self *CassClient) FetchMessages(id *gocql.UUID, lim uint8) ([]*Message, error) {
+	template := `SELECT user_id, name, title, url, lang, deployments FROM messages WHERE user_id = ? LIMIT ?`
+	args := []interface{}{
+		id,
+		lim,
+	}
+
+	resRows := make([]*Message, 0)
+	iter := self.Sess.Query(template, args...).Iter()
+	shell := map[string]interface{}{}
+	for iter.MapScan(shell) {
+		id := shell["user_id"].(gocql.UUID)
+		resRows = append(resRows, &Message{
+			UserId:      &id,
+			Name:        shell["name"].(string),
+			Title:       shell["title"].(string),
+			Url:         shell["url"].(string),
+			Lang:        shell["lang"].(string),
+			Deployments: shell["deployments"].([]string),
+		})
+
+		// since shell is used in each iteration, we must clear it.
+		shell = map[string]interface{}{}
+	}
+
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+	return resRows, nil
+
 }
 
 // DeploymentMetadata
