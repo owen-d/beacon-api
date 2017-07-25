@@ -30,12 +30,12 @@ type DeploymentsResponse struct {
 	Deployments []*cass.Deployment `json:"deployments"`
 }
 
-type Deployment struct {
-	UserId      string   `json:"user_id"`
-	Name        string   `json:"name"`
-	BeaconNames []string `json:"beacon_names"`
-	MessageName string   `json:"message_name`
-	Message     *Message `json:"message"`
+type IncomingDeployment struct {
+	UserId      *gocql.UUID `json:-`
+	Name        string      `json:"name"`
+	BeaconNames []string    `json:"beacon_names"`
+	MessageName string      `json:"message_name`
+	Message     *Message    `json:"message"`
 }
 
 type Message struct {
@@ -45,7 +45,7 @@ type Message struct {
 }
 
 // Validate fulfills the validator.JSONValidator interface
-func (self *Deployment) Validate(r *http.Request) *validator.RequestErr {
+func (self *IncomingDeployment) Validate(r *http.Request) *validator.RequestErr {
 	// validate deployment
 	jsonBody, readErr := ioutil.ReadAll(r.Body)
 	if readErr != nil {
@@ -60,20 +60,15 @@ func (self *Deployment) Validate(r *http.Request) *validator.RequestErr {
 	//assign userId into deployment (forcefully overwrite a potentially malicious userId)
 	bindings := r.Context().Value(jwt.JWTNamespace).(*jwt.Bindings)
 
-	self.UserId = bindings.UserId.String()
+	self.UserId = bindings.UserId
 	return nil
 }
 
 // ToCass coerces a Deployment into the cassandra lib version (mainly handling uuid conversions)
-func (self *Deployment) ToCass() (*cass.Deployment, error) {
-	userId, parseErr := gocql.ParseUUID(self.UserId)
-
-	if parseErr != nil {
-		return nil, parseErr
-	}
+func (self *IncomingDeployment) ToCass() (*cass.Deployment, error) {
 
 	cassDep := &cass.Deployment{
-		UserId:      &userId,
+		UserId:      self.UserId,
 		DeployName:  self.Name,
 		BeaconNames: self.BeaconNames,
 	}
@@ -96,7 +91,7 @@ func (self *Deployment) ToCass() (*cass.Deployment, error) {
 // PostDeployment is middleware which creates a deployment (composed of its parts) in cassandra
 func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 
-	deployment := &Deployment{}
+	deployment := &IncomingDeployment{}
 
 	if invalid := deployment.Validate(r); invalid != nil {
 		invalid.Flush(rw)
