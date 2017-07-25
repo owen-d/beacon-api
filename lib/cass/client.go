@@ -33,7 +33,7 @@ type Client interface {
 }
 
 const (
-	DefaultLimit = 500
+	DefaultLimit = 250
 )
 
 type User struct {
