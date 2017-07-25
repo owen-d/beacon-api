@@ -134,7 +134,7 @@ func (self *CassClient) FetchUser(u *User) (*User, error) {
 // Beacons ------------------------------------------------------------------------------
 
 func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) *UpsertResult {
-	template := `INSERT INTO beacons (user_id, name, deploy_name) VALUES (?, ?, ?)`
+	template := `INSERT INTO beacons (user_id, name, deploy_name) VALUES (?, ?, ?) IF NOT EXISTS`
 
 	providedBatch := (batch != nil)
 	if !providedBatch {
@@ -251,7 +251,7 @@ func (self *CassClient) FetchUserBeacons(userId *gocql.UUID) ([]*Beacon, error) 
 // Messages ------------------------------------------------------------------------------
 
 func (self *CassClient) CreateMessage(m *Message, batch *gocql.Batch) *UpsertResult {
-	template := `INSERT INTO messages (user_id, name, title, url, lang, deployments) VALUES (?, ?, ?, ?, ?, ?)`
+	template := `INSERT INTO messages (user_id, name, title, url, lang, deployments) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS`
 	args := []interface{}{
 		m.UserId,
 		m.Name,
