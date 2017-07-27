@@ -3,6 +3,8 @@ package deployments
 import (
 	"encoding/json"
 	"github.com/gocql/gocql"
+	"github.com/gorilla/mux"
+	"github.com/owen-d/beacon-api/api/controllers/beacons"
 	"github.com/owen-d/beacon-api/lib/auth/jwt"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/cass"
@@ -17,7 +19,7 @@ import (
 type DeploymentRoutes interface {
 	PostDeployment(http.ResponseWriter, *http.Request, http.HandlerFunc)
 	FetchDeploymentsMetadata(http.ResponseWriter, *http.Request, http.HandlerFunc)
-	FetchDeploymentByName(http.ResponseWriter, *http.Request, http.HandlerFunc)
+	FetchDeploymentBeacons(http.ResponseWriter, *http.Request, http.HandlerFunc)
 }
 
 type DeploymentMethods struct {
@@ -196,7 +198,38 @@ func (self *DeploymentMethods) FetchDeploymentsMetadata(rw http.ResponseWriter, 
 	rw.Write(data)
 
 }
-func (self *DeploymentMethods) FetchDeploymentByName(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (self *DeploymentMethods) FetchDeploymentBeacons(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	bindings := r.Context().Value(jwt.JWTNamespace).(*jwt.Bindings)
+
+	reqVars := mux.Vars(r)
+	name, nameExists := reqVars["name"]
+
+	if !nameExists {
+		err := &validator.RequestErr{Status: 500}
+		err.Flush(rw)
+		return
+	}
+
+	dep := &cass.Deployment{
+		UserId:     bindings.UserId,
+		DeployName: name,
+	}
+
+	bkns, fetchErr := self.CassClient.FetchDeploymentBeacons(dep)
+
+	if fetchErr != nil {
+		err := &validator.RequestErr{Status: 500, Message: fetchErr.Error()}
+		err.Flush(rw)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+
+	data, _ := json.Marshal(beacons.BeaconResponse{bkns})
+
+	rw.Write(data)
+
 }
 
 // Router instantiates a Router object from the related lib
@@ -213,8 +246,8 @@ func (self *DeploymentMethods) Router() *route.Router {
 		// /:id routes
 		&route.Endpoint{
 			Method:   "GET",
-			Handlers: []negroni.Handler{negroni.HandlerFunc(self.FetchDeploymentByName)},
-			SubPath:  "/:id",
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.FetchDeploymentBeacons)},
+			SubPath:  "/{name}/beacons",
 		},
 	}
 
