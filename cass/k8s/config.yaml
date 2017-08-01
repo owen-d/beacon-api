@@ -1,0 +1,14 @@
+resources:
+  requests:
+    memory: 2Gi
+    cpu: 1
+  limits:
+    memory: 4Gi
+    cpu: 1
+
+config:
+  cluster_name: cassandra
+  cluster_size: 1
+  seed_size: 1
+  max_heap_size: 1024M
+  heap_new_size: 256M
