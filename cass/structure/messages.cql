@@ -5,5 +5,7 @@ CREATE TABLE IF NOT EXISTS bkn.messages (
   url varchar,
   lang varchar,
   deployments set<varchar>,
+  created_at timestamp,
+  updated_at timestamp,
   PRIMARY KEY ((user_id), name)
 );
