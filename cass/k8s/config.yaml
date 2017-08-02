@@ -1,7 +1,7 @@
 resources:
   requests:
     memory: 2Gi
-    cpu: 1
+    cpu: 500m
   limits:
     memory: 4Gi
     cpu: 1
@@ -12,3 +12,7 @@ config:
   seed_size: 1
   max_heap_size: 1024M
   heap_new_size: 256M
+
+persistence:
+  enabled: true
+  storageClass: generic-ssd
