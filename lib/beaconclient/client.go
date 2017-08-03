@@ -67,7 +67,8 @@ func (c *BeaconClient) GetOwnedBeaconNames() (*proximitybeacon.ListBeaconsRespon
 }
 
 func (c *BeaconClient) GetBeaconById(name string) (*proximitybeacon.Beacon, error) {
-	return c.Svc.Beacons.Get(name).Do()
+	prefixed := "beacons/3!" + name
+	return c.Svc.Beacons.Get(prefixed).Do()
 }
 
 func (c *BeaconClient) GetBeaconsByNames(bNames []string) []*proximitybeacon.Beacon {
@@ -97,7 +98,8 @@ func (c *BeaconClient) GetBeaconsByNames(bNames []string) []*proximitybeacon.Bea
 }
 
 func (c *BeaconClient) GetAttachmentsForBeacon(name string) ([]*proximitybeacon.BeaconAttachment, error) {
-	res, err := c.Svc.Beacons.Attachments.List(name).NamespacedType(googleNamespacedType).Do()
+	prefixed := "beacons/3!" + name
+	res, err := c.Svc.Beacons.Attachments.List(prefixed).NamespacedType(googleNamespacedType).Do()
 	var results []*proximitybeacon.BeaconAttachment
 	if err != nil {
 		return results, err
@@ -108,18 +110,20 @@ func (c *BeaconClient) GetAttachmentsForBeacon(name string) ([]*proximitybeacon.
 
 // TBD: parameterize namespacedType
 func (c *BeaconClient) CreateAttachment(beaconName string, attachmentData *AttachmentData) (*proximitybeacon.BeaconAttachment, error) {
+	prefixed := "beacons/3!" + beaconName
 	data := attachmentData.encode()
 	newAttachment := proximitybeacon.BeaconAttachment{
 		Data:           data,
 		NamespacedType: googleNamespacedType,
 	}
 
-	return c.Svc.Beacons.Attachments.Create(beaconName, &newAttachment).Do()
+	return c.Svc.Beacons.Attachments.Create(prefixed, &newAttachment).Do()
 }
 
 // TBD: parameterize namespacedType
 func (c *BeaconClient) BatchDeleteAttachments(beaconName string) (int64, error) {
-	res, err := c.Svc.Beacons.Attachments.BatchDelete(beaconName).NamespacedType(googleNamespacedType).Do()
+	prefixed := "beacons/3!" + beaconName
+	res, err := c.Svc.Beacons.Attachments.BatchDelete(prefixed).NamespacedType(googleNamespacedType).Do()
 	if err != nil {
 		return 0, err
 	}
