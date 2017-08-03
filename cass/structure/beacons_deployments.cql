@@ -11,9 +11,12 @@
 CREATE TABLE IF NOT EXISTS bkn.beacons (
   user_id uuid,
   deploy_name varchar,
-  name varchar,
+  name blob,
   created_at timestamp,
   updated_at timestamp,
+  manu_id blob,
+  manu_key smallint,
+  tags map<varchar, varchar>,
   PRIMARY KEY ((user_id), name)
 );
 
