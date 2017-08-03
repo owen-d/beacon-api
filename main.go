@@ -8,6 +8,7 @@ import (
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/cass"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -48,7 +49,7 @@ func main() {
 	safeExit(err)
 
 	// cassClient
-	cassClient := createLocalhostCassClient("bkn")
+	cassClient := createCassClient("bkn", "localhost")
 
 	// inject necessary backend (google api svc) into env
 	env := api.Env{svc, cassClient, []byte(conf.JWTSecret)}
@@ -99,8 +100,17 @@ func beaconCycle(svc *beaconclient.BeaconClient) {
 
 }
 
-func createLocalhostCassClient(keyspace string) *cass.CassClient {
-	cluster := gocql.NewCluster("localhost")
+func createCassClient(keyspace string, address string) *cass.CassClient {
+	if address == "" {
+		address = "localhost"
+	}
+
+	addrs, lookupErr := net.LookupHost(address)
+	if lookupErr != nil {
+		log.Fatal("couldn't match cassandra host:\n", lookupErr)
+	}
+
+	cluster := gocql.NewCluster(addrs...)
 	client, err := cass.Connect(cluster, keyspace)
 	if err != nil {
 		log.Fatal(err)
