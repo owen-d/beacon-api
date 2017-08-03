@@ -9,7 +9,7 @@ import (
 const (
 	prepopId    = "6ba7b810-9dad-11d1-80b4-00c04fd430c9"
 	prepopEmail = "int-test.email@gmail.com"
-	prepopBName = "a1"
+	prepopBName = "00000000000000000000000000000000"
 	prepopMName = "first_msg"
 	prepopDName = "dep1"
 )
@@ -201,9 +201,9 @@ func TestFetchBeacon(t *testing.T) {
 		Name:   prepopBName,
 	}
 
-	_, err := client.FetchBeacon(&bkn)
-	if err != nil {
-		t.Error("failed to match beacon:", err)
+	found, err := client.FetchBeacon(&bkn)
+	if err != nil || found == nil {
+		t.Error("failed to match beacon:", err, ", ", found)
 	}
 }
 
@@ -301,9 +301,9 @@ func TestFetchMessage(t *testing.T) {
 		Name:   prepopMName,
 	}
 
-	_, err := client.FetchMessage(&msg)
+	fetched, err := client.FetchMessage(&msg)
 
-	if err != nil {
+	if err != nil || fetched == nil {
 		t.Error("failed to fetch msg:", err)
 		return
 	}
@@ -320,9 +320,9 @@ func TestFetchMessages(t *testing.T) {
 		UserId: &uuid,
 	}
 
-	_, err := client.FetchMessages(msg.UserId, 5)
+	fetched, err := client.FetchMessages(msg.UserId, 5)
 
-	if err != nil {
+	if err != nil || len(fetched) == 0 {
 		t.Error("failed to fetch msg:", err)
 		return
 	}
@@ -385,14 +385,14 @@ func TestFetchDeploymentMetadata(t *testing.T) {
 		DeployName: prepopDName,
 	}
 	t.Run("single", func(t *testing.T) {
-		_, err := client.FetchDeploymentMetadata(dep.UserId, dep.DeployName)
-		if err != nil {
+		fetched, err := client.FetchDeploymentMetadata(dep.UserId, dep.DeployName)
+		if err != nil || fetched == nil {
 			t.Error(err)
 		}
 	})
 	t.Run("multi", func(t *testing.T) {
-		_, err := client.FetchDeploymentsMetadata(dep.UserId)
-		if err != nil {
+		fetched, err := client.FetchDeploymentsMetadata(dep.UserId)
+		if err != nil || len(fetched) == 0 {
 			t.Error(err)
 		}
 	})
@@ -463,9 +463,9 @@ func TestFetchDeploymentBeacons(t *testing.T) {
 		DeployName: prepopDName,
 	}
 
-	_, err := client.FetchDeploymentBeacons(&dep)
+	fetched, err := client.FetchDeploymentBeacons(&dep)
 
-	if err != nil {
+	if err != nil || len(fetched) == 0 {
 		t.Error(err)
 	}
 
@@ -482,9 +482,9 @@ func TestFetchDeployment(t *testing.T) {
 		DeployName: prepopDName,
 	}
 
-	_, err := client.FetchDeployment(&dep)
+	fetched, err := client.FetchDeployment(&dep)
 
-	if err != nil {
+	if err != nil || fetched == nil {
 		t.Error(err)
 	}
 }

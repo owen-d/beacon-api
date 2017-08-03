@@ -2,6 +2,8 @@
 package cass
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"github.com/gocql/gocql"
 )
@@ -44,7 +46,36 @@ type User struct {
 type Beacon struct {
 	UserId     *gocql.UUID `cql:"user_id" json:"user_id"`
 	DeployName string      `cql:"deploy_name" json:"deploy_name"`
-	Name       string      `cql:"name" json:"name"`
+	Name       []byte      `cql:"name"`
+}
+
+func (self *Beacon) MarshalJSON() ([]byte, error) {
+	type Alias Beacon
+	return json.Marshal(&struct {
+		Name string `json:"name"`
+		*Alias
+	}{
+		Name:  hex.EncodeToString(self.Name),
+		Alias: (*Alias)(self),
+	})
+}
+
+func (self *Beacon) UnmarshalJSON(data []byte) error {
+	type Alias Beacon
+	aux := struct {
+		Name string `json:name`
+		*Alias
+	}{
+		Alias: (*Alias)(self),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	var decodeErr error
+	if self.Name, decodeErr = hex.DecodeString(aux.Name); decodeErr != nil {
+		return decodeErr
+	}
+	return nil
 }
 
 type Message struct {
@@ -63,7 +94,48 @@ type Deployment struct {
 	DeployName  string      `json:"name"`
 	MessageName string      `json:"message_name,omitempty"`
 	Message     *Message    `json:"message,omitempty"`
-	BeaconNames []string    `json:"beacon_names"`
+	BeaconNames [][]byte    `json:"beacon_names"`
+}
+
+func (self *Deployment) MarshalJSON() ([]byte, error) {
+	type Alias Deployment
+
+	bNames := make([]string, len(self.BeaconNames))
+
+	for i, name := range self.BeaconNames {
+		bNames[i] = hex.EncodeToString(name)
+	}
+	return json.Marshal(&struct {
+		BeaconNames []string `json:"beacon_names"`
+		*Alias
+	}{
+		BeaconNames: bNames,
+		Alias:       (*Alias)(self),
+	})
+}
+
+func (self *Deployment) UnmarshalJSON(data []byte) error {
+	type Alias Deployment
+	aux := struct {
+		BeaconNames []string `json:beacon_names`
+		*Alias
+	}{
+		Alias: (*Alias)(self),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	bNames := make([][]byte, len(aux.BeaconNames))
+	for i, name := range aux.BeaconNames {
+		if decoded, decodeErr := hex.DecodeString(name); decodeErr != nil {
+			return decodeErr
+		} else {
+			bNames[i] = decoded
+		}
+	}
+	self.BeaconNames = bNames
+	return nil
 }
 
 type CassClient struct {
@@ -234,7 +306,7 @@ func (self *CassClient) FetchUserBeacons(userId *gocql.UUID) ([]*Beacon, error) 
 		resRows = append(resRows, &Beacon{
 			UserId:     &id,
 			DeployName: shell["deploy_name"].(string),
-			Name:       shell["name"].(string),
+			Name:       shell["name"].([]uint8),
 		})
 
 		// since shell is used in each iteration, we must clear it.
@@ -512,7 +584,7 @@ func (self *CassClient) FetchDeploymentBeacons(dep *Deployment) ([]*Beacon, erro
 		resRows = append(resRows, &Beacon{
 			UserId:     &id,
 			DeployName: shell["deploy_name"].(string),
-			Name:       shell["name"].(string),
+			Name:       shell["name"].([]uint8),
 		})
 
 		// since shell is used in each iteration, we must clear it.
@@ -596,11 +668,19 @@ func newDispatcher() *dispatcher {
 	}
 }
 
-func mapBeaconNames(bkns []*Beacon) []string {
-	res := make([]string, 0, len(bkns))
+func mapBeaconNames(bkns []*Beacon) [][]byte {
+	res := make([][]byte, 0, len(bkns))
 
 	for _, bkn := range bkns {
 		res = append(res, bkn.Name)
 	}
 	return res
+}
+
+func MapBytesToHex(col [][]byte) []string {
+	names := make([]string, len(col))
+	for i, name := range col {
+		names[i] = hex.EncodeToString(name)
+	}
+	return names
 }

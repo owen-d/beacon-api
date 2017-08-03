@@ -2,7 +2,6 @@ package deployments
 
 import (
 	"encoding/json"
-	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
 	"github.com/owen-d/beacon-api/api/controllers/beacons"
 	"github.com/owen-d/beacon-api/lib/auth/jwt"
@@ -32,19 +31,7 @@ type DeploymentsResponse struct {
 	Deployments []*cass.Deployment `json:"deployments"`
 }
 
-type IncomingDeployment struct {
-	UserId      *gocql.UUID `json:-`
-	Name        string      `json:"name"`
-	BeaconNames []string    `json:"beacon_names"`
-	MessageName string      `json:"message_name`
-	Message     *Message    `json:"message"`
-}
-
-type Message struct {
-	Name  string `json:"name"`
-	Title string `json:"title"`
-	Url   string `json:"url"`
-}
+type IncomingDeployment struct{ *cass.Deployment }
 
 // Validate fulfills the validator.JSONValidator interface
 func (self *IncomingDeployment) Validate(r *http.Request) *validator.RequestErr {
@@ -66,6 +53,7 @@ func (self *IncomingDeployment) Validate(r *http.Request) *validator.RequestErr 
 	return nil
 }
 
+/*
 // ToCass coerces a Deployment into the cassandra lib version (mainly handling uuid conversions)
 func (self *IncomingDeployment) ToCass() (*cass.Deployment, error) {
 
@@ -89,6 +77,7 @@ func (self *IncomingDeployment) ToCass() (*cass.Deployment, error) {
 
 	return cassDep, nil
 }
+*/
 
 // PostDeployment is middleware which creates a deployment (composed of its parts) in cassandra
 func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -101,14 +90,8 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 		return
 	}
 
-	cassDep, castErr := deployment.ToCass()
-
-	if castErr != nil {
-		err := &validator.RequestErr{500, castErr.Error()}
-		err.Flush(rw)
-		next(rw, r)
-		return
-	}
+	// deployment wraps type cass.Deployment
+	cassDep := deployment.Deployment
 
 	// insert deployment to cassandra (acts as upsert)
 	res := self.CassClient.PostDeployment(cassDep)
@@ -124,7 +107,7 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 		Title: cassDep.Message.Title,
 		Url:   cassDep.Message.Url,
 	}
-	attachmentResults := self.postAttachments(cassDep.BeaconNames, attachment)
+	attachmentResults := self.postAttachments(cass.MapBytesToHex(cassDep.BeaconNames), attachment)
 
 	rw.WriteHeader(http.StatusCreated)
 
