@@ -136,7 +136,7 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 type AttachmentResult struct {
 	Name       string
 	Err        error
-	Attachment *proximitybeacon.BeaconAttachment
+	Attachment *proximitybeacon.BeaconAttachment `json:-`
 }
 
 // postAttachments is a private method which deletes & re-adds attachments to a beacon registered in google's beacon platform
