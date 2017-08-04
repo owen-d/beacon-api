@@ -117,13 +117,18 @@ func (self *Deployment) MarshalJSON() ([]byte, error) {
 func (self *Deployment) UnmarshalJSON(data []byte) error {
 	type Alias Deployment
 	aux := struct {
-		BeaconNames []string `json:beacon_names`
+		BeaconNames []string `json:"beacon_names"`
 		*Alias
 	}{
 		Alias: (*Alias)(self),
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
+	}
+
+	// return early if nil; cannot add other fields
+	if self == nil {
+		return nil
 	}
 
 	bNames := make([][]byte, len(aux.BeaconNames))

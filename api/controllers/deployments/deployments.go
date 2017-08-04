@@ -71,6 +71,12 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 	// deployment wraps type cass.Deployment
 	cassDep := deployment.Deployment
 
+	if cassDep.Message == nil && cassDep.MessageName == "" {
+		err := &validator.RequestErr{400, "new deployments must specify message or message_name"}
+		err.Flush(rw)
+		next(rw, r)
+		return
+	}
 	// insert deployment to cassandra (acts as upsert)
 	res := self.CassClient.PostDeployment(cassDep)
 	if res.Err != nil {
