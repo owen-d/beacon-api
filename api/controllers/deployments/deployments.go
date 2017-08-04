@@ -33,6 +33,10 @@ type DeploymentsResponse struct {
 
 type IncomingDeployment struct{ *cass.Deployment }
 
+func NewIncomingDep() *IncomingDeployment {
+	return &IncomingDeployment{&cass.Deployment{}}
+}
+
 // Validate fulfills the validator.JSONValidator interface
 func (self *IncomingDeployment) Validate(r *http.Request) *validator.RequestErr {
 	// validate deployment
@@ -53,36 +57,10 @@ func (self *IncomingDeployment) Validate(r *http.Request) *validator.RequestErr 
 	return nil
 }
 
-/*
-// ToCass coerces a Deployment into the cassandra lib version (mainly handling uuid conversions)
-func (self *IncomingDeployment) ToCass() (*cass.Deployment, error) {
-
-	cassDep := &cass.Deployment{
-		UserId:      self.UserId,
-		DeployName:  self.Name,
-		BeaconNames: self.BeaconNames,
-	}
-
-	if self.MessageName != "" {
-		cassDep.MessageName = self.MessageName
-	}
-
-	if self.Message != nil {
-		cassDep.Message = &cass.Message{
-			Name:  self.Message.Name,
-			Title: self.Message.Title,
-			Url:   self.Message.Url,
-		}
-	}
-
-	return cassDep, nil
-}
-*/
-
 // PostDeployment is middleware which creates a deployment (composed of its parts) in cassandra
 func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 
-	deployment := &IncomingDeployment{}
+	deployment := NewIncomingDep()
 
 	if invalid := deployment.Validate(r); invalid != nil {
 		invalid.Flush(rw)
