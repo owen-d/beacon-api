@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	defaultConfigPath = filepath.Join(os.Getenv("GOPATH"), "src/github.com/owen-d/beacon-api/conf/settings/config.json")
+	defaultConfigsDir = filepath.Join(os.Getenv("GOPATH"), "src/github.com/owen-d/beacon-api/conf/settings")
 )
 
 func safeExit(e error) {
@@ -26,13 +26,13 @@ func safeExit(e error) {
 
 func loadConf() *config.JsonConfig {
 	var confPath string
-	if envPath := os.Getenv("CONFIG_FILE"); envPath != "" {
+	if envPath := os.Getenv("CONFIGS_DIR"); envPath != "" {
 		confPath = envPath
 	} else {
-		confPath = defaultConfigPath
+		confPath = defaultConfigsDir
 	}
 
-	conf, err := config.LoadConfFromFile(confPath)
+	conf, err := config.LoadConfFromDir(confPath)
 
 	if err != nil {
 		log.Fatal(err)
