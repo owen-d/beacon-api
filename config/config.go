@@ -13,6 +13,7 @@ type JsonConfig struct {
 	JWTSecret        string `json:"JWTSecret"`
 	CassEndpoint     string
 	CassKeyspace     string
+	Port             int
 }
 
 func LoadConfFromDir(fPath string) (*JsonConfig, error) {
@@ -27,6 +28,8 @@ func LoadConfFromDir(fPath string) (*JsonConfig, error) {
 		CassEndpoint:     cassEndpoint,
 		// hardcode keyspace
 		CassKeyspace: "bkn",
+		// hardcoded port
+		Port: 8080,
 	}
 	data, err := ioutil.ReadFile(filepath.Join(fPath, "config.json"))
 	if err != nil {

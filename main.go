@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 var (
@@ -57,7 +58,7 @@ func main() {
 	// build router from bound env
 	handler := env.Init()
 
-	http.ListenAndServe(":8080", handler)
+	http.ListenAndServe(":"+strconv.Itoa(conf.Port), handler)
 
 }
 
