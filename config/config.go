@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 type JsonConfig struct {
@@ -22,6 +23,16 @@ func LoadConfFromDir(fPath string) (*JsonConfig, error) {
 	if cassEndpoint == "" {
 		cassEndpoint = "localhost"
 	}
+	var port int
+	if strPort := os.Getenv("LISTEN_PORT"); strPort == "" {
+		port = 8080
+	} else {
+		parsedPort, parseErr := strconv.Atoi(strPort)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		port = parsedPort
+	}
 	conf := &JsonConfig{
 		// default gcp config location is in same dir as config.json
 		GCloudConfigPath: filepath.Join(fPath, "gcp-credentials.json"),
@@ -29,7 +40,7 @@ func LoadConfFromDir(fPath string) (*JsonConfig, error) {
 		// hardcode keyspace
 		CassKeyspace: "bkn",
 		// hardcoded port
-		Port: 8080,
+		Port: port,
 	}
 	data, err := ioutil.ReadFile(filepath.Join(fPath, "config.json"))
 	if err != nil {
