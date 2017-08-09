@@ -49,7 +49,7 @@ func main() {
 	safeExit(err)
 
 	// cassClient
-	cassClient := createCassClient("bkn", "localhost")
+	cassClient := createCassClient(conf.CassKeyspace, conf.CassEndpoint)
 
 	// inject necessary backend (google api svc) into env
 	env := api.Env{svc, cassClient, []byte(conf.JWTSecret)}
