@@ -1,0 +1,5 @@
+{
+  "scope": "https://www.googleapis.com/auth/userlocation.beacon.registry",
+  "gCloudConfigPath": "<REDACTED>",
+  "JWTSecret": "<REDACTED>"
+}
