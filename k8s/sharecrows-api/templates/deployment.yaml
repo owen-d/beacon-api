@@ -1,0 +1,51 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-nginx
+          image: "{{ .Values.nginx.repository}}:{{ .Values.nginx.tag }}"
+          imagePullPolicy: "{{ .Values.nginx.pullPolicy}}"
+          ports:
+            - containerPort: {{ .Values.nginx.internalPort }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.nginx.internalPort }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.nginx.internalPort }}
+          resources:
+{{ toYaml .Values.nginx.resources | indent 10 }}
+        - name: {{ .Chart.Name }}-api
+          image: "{{ .Values.api.repository}}:{{ .Values.api.tag }}"
+          imagePullPolicy: "{{ .Values.api.pullPolicy}}"
+          ports:
+            - containerPort: {{ .Values.api.internalPort }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.api.internalPort }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.api.internalPort }}
+          resources:
+{{ toYaml .Values.api.resources | indent 10 }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
