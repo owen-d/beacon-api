@@ -1,8 +1,15 @@
 #!/bin/bash
 
 # also allow port injection via docker CMD syntax
-LISTEN_PORT=$1
-PROXY_PORT=$2
+if [[ -n $1 ]]
+then
+    LISTEN_PORT=$1
+fi
+
+if [[ -n $2 ]]
+then
+    PROXY_PORT=$2
+fi
 
 TEMPLATE_FILE=/etc/nginx/proxy.template.conf
 
