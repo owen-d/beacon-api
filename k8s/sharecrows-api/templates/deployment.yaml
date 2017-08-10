@@ -21,6 +21,11 @@ spec:
           imagePullPolicy: "{{ .Values.nginx.pullPolicy}}"
           ports:
             - containerPort: {{ .Values.nginx.internalPort }}
+          env:
+            - name: LISTEN_PORT
+              value: {{ .Values.nginx.internalPort }}
+            - name: PROXY_PORT
+              value: {{ .Values.api.internalPort }}
           livenessProbe:
             httpGet:
               path: /
@@ -36,6 +41,11 @@ spec:
           imagePullPolicy: "{{ .Values.api.pullPolicy}}"
           ports:
             - containerPort: {{ .Values.api.internalPort }}
+          env:
+            - name: LISTEN_PORT
+              value: {{ .Values.api.internalPort }}
+            - name: CASSANDRA_ENDPOINT
+              value: {{ .Values.cassandra.serviceName }}
           livenessProbe:
             httpGet:
               path: /
