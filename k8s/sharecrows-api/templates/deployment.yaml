@@ -30,7 +30,7 @@ spec:
               path: /
               port: {{ .Values.nginx.internalPort }}
           resources:
-{{ toYaml .Values.nginx.resources | indent 10 }}
+{{ toYaml .Values.nginx.resources | indent 12 }}
         - name: {{ .Chart.Name }}-api
           image: "{{ .Values.api.repository}}:{{ .Values.api.tag }}"
           imagePullPolicy: "{{ .Values.api.pullPolicy}}"
@@ -45,7 +45,6 @@ spec:
               path: /
               port: {{ .Values.api.internalPort }}
           resources:
-{{ toYaml .Values.api.resources | indent 10 }}
+{{ toYaml .Values.api.resources | indent 12 }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
-    {{- end }}

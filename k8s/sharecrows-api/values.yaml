@@ -20,10 +20,10 @@ service:
 
 # nginx details. make sure to set proxy pass to api internalPort & listen port  via env & sed injection
 nginx:
-  repository: <TBD>
-  tag: <TBD>
-  pullPolicy: <TBD>
-  internalPort: <TBD>
+  repository: gcr.io/glassy-courage-146901/sharecrows-api-proxy
+  tag: 9f19c6b80fea
+  pullPolicy: IfNotPresent
+  internalPort: 80
   resources:
     limits:
       cpu: 50m
@@ -34,17 +34,17 @@ nginx:
 
 # app details
 api:
-  repository: <TBD>
-  tag: <TBD>
-  pullPolicy: <TBD>
-  internalPort: <TBD>
+  repository: gcr.io/glassy-courage-146901/sharecrows-api
+  tag: 344b6ecd91dc
+  pullPolicy: IfNotPresent
+  internalPort: 8080
   resources:
     limits:
       cpu: 100m
-      memory: 1Gi
+      memory: 2Gi
     requests:
       cpu: 25m
-      memory: 2Gi
+      memory: 1Gi
 
 # cassandra serviceName
 cassandra:
