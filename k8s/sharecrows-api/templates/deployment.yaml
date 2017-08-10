@@ -46,6 +46,8 @@ spec:
               value: {{ .Values.api.internalPort }}
             - name: CASSANDRA_ENDPOINT
               value: {{ .Values.cassandra.serviceName }}
+            - name: CONFIGS_DIR
+              value: {{ .Values.api.configs.secretPath }}
           livenessProbe:
             httpGet:
               path: /
@@ -54,7 +56,15 @@ spec:
             httpGet:
               path: /
               port: {{ .Values.api.internalPort }}
+          volumeMounts:
+            - name: api-configs
+              mountPath: {{ .Values.api.configs.secretPath }}
+              readOnly: true
           resources:
 {{ toYaml .Values.api.resources | indent 12 }}
+      volumes:
+        - name: api-configs
+          secret:
+            secretName: {{ .Values.api.configs.secretName }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}

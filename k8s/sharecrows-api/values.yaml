@@ -38,6 +38,9 @@ api:
   tag: 344b6ecd91dc
   pullPolicy: IfNotPresent
   internalPort: 8080
+  configs:
+    secretName: v1api-configs
+    secretPath: /etc/beacon-api/configs
   resources:
     limits:
       cpu: 100m
