@@ -59,15 +59,16 @@ func (r *Router) build(rootRouter *mux.Router, prependMiddleware []negroni.Handl
 	}
 }
 
-// BuildRouter recursively builds all routes & related middleware via endpoints, returning the resulting mux router.
-func BuildRouter(root *Router, initRouter *mux.Router) *Router {
+// Inject recursively builds all routes & related middleware via endpoints, adding their routes onto the root mux router & returning it.
+func Inject(router *Router, root *mux.Router) *mux.Router {
 	// base case, must instantiate a new router
-	if initRouter == nil {
-		initRouter = mux.NewRouter()
+	if root == nil {
+		root = mux.NewRouter()
 	}
 
 	// recursive call to build all deps
-	root.build(initRouter, nil)
+	router.build(root, nil)
+
 	return root
 
 }

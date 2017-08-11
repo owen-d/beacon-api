@@ -58,6 +58,8 @@ func main() {
 	// build router from bound env
 	handler := env.Init()
 
+	fmt.Printf("sharecrows api live on port %v\n", conf.Port)
+
 	http.ListenAndServe(":"+strconv.Itoa(conf.Port), handler)
 
 }
@@ -67,38 +69,6 @@ func listNamespaces(svc *beaconclient.BeaconClient) {
 	for _, ns := range res.Namespaces {
 		fmt.Printf("ns: %+v\n", ns)
 	}
-}
-
-func beaconCycle(svc *beaconclient.BeaconClient) {
-	// get list of beacon names
-	res, err := svc.GetOwnedBeaconNames()
-	safeExit(err)
-	bNames := make([]string, 0, len(res.Beacons))
-
-	for _, b := range res.Beacons {
-		bNames = append(bNames, b.BeaconName)
-	}
-
-	// delete old attachments on beacon
-	numDeleted, _ := svc.BatchDeleteAttachments(bNames[0])
-	fmt.Printf("deleted %v\n", numDeleted)
-
-	// add new attachment to beacon
-	newAttachment := beaconclient.AttachmentData{
-		Title: "Welcome home, qtpi",
-		Url:   "https://www.eff.org",
-	}
-
-	fmt.Println("attempting to attach to beacon:", bNames[0], "\n")
-	attachment, err := svc.CreateAttachment(bNames[0], &newAttachment)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("created attachment:\n%+v\n", attachment)
-
-	fmt.Printf("done")
-
 }
 
 func createCassClient(keyspace string, address string) *cass.CassClient {
