@@ -16,16 +16,16 @@ spec:
         release: {{ .Release.Name }}
     spec:
       containers:
-        - name: {{ .Chart.Name }}-nginx
+        - name: "{{ .Chart.Name }}-nginx"
           image: "{{ .Values.nginx.repository}}:{{ .Values.nginx.tag }}"
           imagePullPolicy: "{{ .Values.nginx.pullPolicy}}"
           ports:
             - containerPort: {{ .Values.nginx.internalPort }}
           env:
             - name: LISTEN_PORT
-              value: {{ .Values.nginx.internalPort }}
+              value: {{ .Values.nginx.internalPort | quote }}
             - name: PROXY_PORT
-              value: {{ .Values.api.internalPort }}
+              value: {{ .Values.api.internalPort | quote }}
           livenessProbe:
             httpGet:
               path: /
@@ -43,11 +43,11 @@ spec:
             - containerPort: {{ .Values.api.internalPort }}
           env:
             - name: LISTEN_PORT
-              value: {{ .Values.api.internalPort }}
+              value: {{ .Values.api.internalPort | quote }}
             - name: CASSANDRA_ENDPOINT
-              value: {{ .Values.cassandra.serviceName }}
+              value: {{ .Values.cassandra.serviceName | quote }}
             - name: CONFIGS_DIR
-              value: {{ .Values.api.configs.secretPath }}
+              value: {{ .Values.api.configs.secretPath | quote }}
           livenessProbe:
             httpGet:
               path: /
@@ -58,13 +58,16 @@ spec:
               port: {{ .Values.api.internalPort }}
           volumeMounts:
             - name: api-configs
-              mountPath: {{ .Values.api.configs.secretPath }}
+              mountPath: "{{ .Values.api.configs.secretPath }}"
               readOnly: true
           resources:
 {{ toYaml .Values.api.resources | indent 12 }}
       volumes:
         - name: api-configs
           secret:
-            secretName: {{ .Values.api.configs.secretName }}
+            secretName: "{{ .Values.api.configs.secretName }}"
+      
+    {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

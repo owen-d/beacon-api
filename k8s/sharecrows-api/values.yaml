@@ -1,3 +1,4 @@
+debugMessage: yes
 # Default values for sharecrows-api.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
