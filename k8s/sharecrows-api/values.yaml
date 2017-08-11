@@ -52,4 +52,4 @@ api:
 
 # cassandra serviceName
 cassandra:
-  serviceName: cass-cassandra.cassandra.svc.local.cluster
+  serviceName: cass-cassandra.cassandra
