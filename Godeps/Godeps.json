@@ -2,9 +2,6 @@
 	"ImportPath": "github.com/owen-d/beacon-api",
 	"GoVersion": "go1.8",
 	"GodepVersion": "v79",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
 			"ImportPath": "cloud.google.com/go/compute/metadata",

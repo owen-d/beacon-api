@@ -36,7 +36,7 @@ nginx:
 # app details
 api:
   repository: gcr.io/glassy-courage-146901/sharecrows-api
-  tag: 344b6ecd91dc
+  tag: 5a287837727f
   pullPolicy: IfNotPresent
   internalPort: 8080
   configs:
