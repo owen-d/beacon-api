@@ -1,0 +1,11 @@
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: api-sharecrows
+  hosts:
+    - api.sharecro.ws
+  tls:
+    - hosts:
+      - api.sharecro.ws
+      # - api.sharecrows.com
+      secretName: sharecrows-api-tls-stage
