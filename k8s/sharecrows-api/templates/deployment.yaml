@@ -65,7 +65,7 @@ spec:
       volumes:
         - name: api-configs
           secret:
-            secretName: {{ template "fullname" . }}
+            secretName: "{{ .Values.api.configs.secretName }}"
       
     {{- if .Values.nodeSelector }}
       nodeSelector:
