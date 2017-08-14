@@ -3,7 +3,7 @@
 
 
 # CONF_FILE=conf/config.json
-CONF_DIR=k8s/conf/settings
+CONF_DIR=conf/settings
 ENCRYPTED_FILE=conf.aes
 
 # 'private' task for echoing instructions
