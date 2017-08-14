@@ -13,7 +13,6 @@ _pwd_prompt:
 
 # decrypt, process tarball & drop in dir
 decrypt_conf: _pwd_prompt
-> mkdir -p ${CONF_DIR} 2>/dev/null || :
 > openssl aes-256-cbc -d -in ${ENCRYPTED_FILE} | tar -xzv -C ${CONF_DIR}
 > chmod -R 700 ${CONF_DIR}
 
