@@ -40,8 +40,9 @@ api:
   pullPolicy: IfNotPresent
   internalPort: 8080
   configs:
-    secretName: v1api-configs
     secretPath: /etc/beacon-api/configs
+    # creationPath points to the decoded config dir locally (appended w/ `/*`), which is parsed & turned into a k8s secret
+    creationPath: "conf/*"
   resources:
     limits:
       cpu: 100m
