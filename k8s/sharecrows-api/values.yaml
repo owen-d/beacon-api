@@ -40,7 +40,8 @@ api:
   pullPolicy: IfNotPresent
   internalPort: 8080
   configs:
-    secretName: v1api-configs
+    # `secretHash` is required, but not specified (must be included via values)
+    # `secretName` is required, but not specified (must be included via values)
     secretPath: /etc/beacon-api/configs
   resources:
     limits:

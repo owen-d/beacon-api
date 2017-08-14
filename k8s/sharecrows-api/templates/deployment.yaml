@@ -11,6 +11,8 @@ spec:
   replicas: {{ .Values.replicaCount }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ required "a secretHash must be supplied" .Values.api.configs.secretHash }}
       labels:
         app: {{ template "name" . }}
         release: {{ .Release.Name }}
@@ -65,8 +67,7 @@ spec:
       volumes:
         - name: api-configs
           secret:
-            secretName: "{{ .Values.api.configs.secretName }}"
-      
+            secretName: {{ required "a secretName must be specified" .Values.api.configs.secretName | quote }}
     {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}

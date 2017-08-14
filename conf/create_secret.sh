@@ -3,12 +3,12 @@ set -e
 
 if [[ -n $1 ]]
 then
-    SECRET_NAME=$1
+    SECRET_NAMESPACE=$1
 fi
 
 if [[ -n $2 ]]
 then
-    SECRET_NAMESPACE=$2
+    SECRET_NAME=$2
 fi
 
 
