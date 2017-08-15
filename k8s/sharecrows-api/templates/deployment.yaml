@@ -50,6 +50,8 @@ spec:
               value: {{ .Values.cassandra.serviceName | quote }}
             - name: CONFIGS_DIR
               value: {{ .Values.api.configs.secretPath | quote }}
+            - name: ENV
+              value: "production"
           livenessProbe:
             httpGet:
               path: /

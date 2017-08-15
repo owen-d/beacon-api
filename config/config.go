@@ -25,7 +25,8 @@ type OAuth struct {
 		Dev  string `json:"dev"`
 		Prod string `json:"prod"`
 	} `json:"redirect_uris"`
-	Scopes []string `json:"scopes"`
+	Scopes      []string `json:"scopes"`
+	StateCipher string
 }
 
 func LoadConfFromDir(fPath string) (*JsonConfig, error) {
