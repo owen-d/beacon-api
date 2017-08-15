@@ -8,7 +8,7 @@ ingress:
     - hosts:
       - api.sharecro.ws
       # - api.sharecrows.com
-      secretName: sharecrows-api-tls-stage
+      secretName: sharecrows-api-tls
 
 api:
   repository: gcr.io/glassy-courage-146901/sharecrows-api
