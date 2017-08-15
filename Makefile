@@ -29,5 +29,5 @@ deploy: decrypt_conf
 > cd conf && ./create_secret.sh ${HELM_NAMESPACE} ${HELM_SECRET_NAME}
 > HELM_SECRET_HASH=`find ${CONF_DIR} -type f | xargs cat | shasum -a 256 | awk '{print $$1}'` ; \
 > cd k8s ; \
-> helm upgrade --install --namespace api --values ./extravals.yaml v1api ./sharecrows-api \
+> helm upgrade --install --namespace ${HELM_NAMESPACE} --values ./extravals.yaml v1api ./sharecrows-api \
 > --set api.configs.secretName=${HELM_SECRET_NAME} --set api.configs.secretHash=$$HELM_SECRET_HASH
