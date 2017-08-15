@@ -15,6 +15,17 @@ type JsonConfig struct {
 	CassEndpoint     string
 	CassKeyspace     string
 	Port             int
+	GoogleOAuth      OAuth `json:"googleOAuth`
+}
+
+type OAuth struct {
+	ClientID     string `json:"client_id`
+	ClientSecret string `json:"client_secret"`
+	RedirectUris struct {
+		Dev  string `json:"dev"`
+		Prod string `json:"prod"`
+	} `json:"redirect_uris"`
+	Scopes []string `json:"scopes"`
 }
 
 func LoadConfFromDir(fPath string) (*JsonConfig, error) {
@@ -33,14 +44,12 @@ func LoadConfFromDir(fPath string) (*JsonConfig, error) {
 		}
 		port = parsedPort
 	}
+	// default configs
 	conf := &JsonConfig{
-		// default gcp config location is in same dir as config.json
 		GCloudConfigPath: filepath.Join(fPath, "gcp-credentials.json"),
 		CassEndpoint:     cassEndpoint,
-		// hardcode keyspace
-		CassKeyspace: "bkn",
-		// hardcoded port
-		Port: port,
+		CassKeyspace:     "bkn",
+		Port:             port,
 	}
 	data, err := ioutil.ReadFile(filepath.Join(fPath, "config.json"))
 	if err != nil {
