@@ -1,4 +1,4 @@
-package oauth
+package crypt
 
 import (
 	"crypto/rand"
