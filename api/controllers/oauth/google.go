@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/owen-d/beacon-api/config"
 	"github.com/owen-d/beacon-api/lib/crypt"
+	"github.com/owen-d/beacon-api/lib/validator"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"io/ioutil"
@@ -75,8 +76,20 @@ func (self *GoogleAuthMethods) getUser(tok *oauth2.Token) (*GoogleUser, error) {
 
 }
 
-// func to handle redirect w/ state & code params. validate state & exchange code for user
+// HandleAuth handles redirect w/ state & code params. validate state & exchange code for user
 func (self *GoogleAuthMethods) HandleAuth(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+}
+
+// RedirectToGoogle generates a state & redirects to the correct google login endpoint
+func (self *GoogleAuthMethods) RedirectToGoogle(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	state, stateErr := Genstate(self.Coder)
+	if stateErr != nil {
+		err := &validator.RequestErr{Status: 500, Message: stateErr.Error()}
+		err.Flush(rw)
+		return
+	}
+	redirectUrl := self.getLoginURL(state)
+	http.Redirect(rw, r, redirectUrl, http.StatusFound)
 }
 
 func (self *GoogleAuthMethods) getLoginURL(state string) string {
