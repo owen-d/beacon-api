@@ -40,8 +40,9 @@ func (self *Env) Init() http.Handler {
 	googleCrypter, googleCrypterErr := crypt.NewOmniCrypter(self.Conf.GoogleOAuth.StateKey)
 	safeExit(googleCrypterErr)
 	googleOAuth := oauth.GoogleAuthMethods{
-		OAuth: oauth.NewOAuthConf(&self.Conf.GoogleOAuth),
-		Coder: googleCrypter,
+		OAuth:      oauth.NewOAuthConf(&self.Conf.GoogleOAuth),
+		Coder:      googleCrypter,
+		CassClient: cassClient,
 	}
 
 	v1Router := &route.Router{

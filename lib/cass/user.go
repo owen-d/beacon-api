@@ -5,12 +5,18 @@ import (
 	"errors"
 	"github.com/gocql/gocql"
 	"github.com/google/uuid"
+	"time"
 )
 
-type providerId []uint8
+type providerId uint8
 
 func (self providerId) ToUUID() [16]byte {
-	return uuid.NewSHA1(uuid.Nil, self)
+	var selfAsUint uint8 = uint8(self)
+	return uuid.NewSHA1(uuid.Nil, []uint8{selfAsUint})
+}
+
+func (self providerId) Unwrap() uint8 {
+	return uint8(self)
 }
 
 func (self providerId) UUIDFromBytes(data []byte) [16]byte {
@@ -18,12 +24,18 @@ func (self providerId) UUIDFromBytes(data []byte) [16]byte {
 }
 
 var (
-	Google providerId = []uint8{1}
+	Google providerId = 1
 )
 
 type User struct {
-	Id    *gocql.UUID `cql:"id"`
-	Email string      `cql:"email"`
+	Id               *gocql.UUID `cql:"id"`
+	Email            string      `cql:"email"`
+	CreatedAt        time.Time   `cql:"created_at"`
+	UpdatedAt        time.Time   `cql:"updated_at"`
+	ProviderId       uint8       `cql:"provider_id"`
+	GivenName        string      `cql:"given_name"`
+	FamilyName       string      `cql:"family_name"`
+	PublicPictureUrl string      `cql:"public_picture_url`
 }
 
 func (self *CassClient) CreateUser(u *User, provider providerId, providerKey []byte, batch *gocql.Batch) *UpsertResult {
@@ -44,10 +56,16 @@ func (self *CassClient) CreateUser(u *User, provider providerId, providerKey []b
 		}
 	}
 
-	template := `INSERT INTO users (id, email) VALUES (?, ?)`
+	template := `INSERT INTO users (id, provider_id, email, given_name, family_name, public_picture_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	args := []interface{}{
 		&uuid,
+		// unwrap yields provider's id
+		provider.Unwrap(),
 		u.Email,
+		u.GivenName,
+		u.FamilyName,
+		u.PublicPictureUrl,
+		time.Now(),
 	}
 
 	if batch != nil {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/owen-d/beacon-api/config"
+	"github.com/owen-d/beacon-api/lib/cass"
 	"github.com/owen-d/beacon-api/lib/crypt"
 	"github.com/owen-d/beacon-api/lib/route"
 	"github.com/owen-d/beacon-api/lib/validator"
@@ -39,8 +40,9 @@ type GoogleAuth interface {
 }
 
 type GoogleAuthMethods struct {
-	OAuth *oauth2.Config
-	Coder *crypt.OmniCrypter
+	OAuth      *oauth2.Config
+	Coder      *crypt.OmniCrypter
+	CassClient cass.Client
 }
 
 // Exchange validates a state string & exchanges the code for a token
@@ -71,11 +73,52 @@ func (self *GoogleAuthMethods) getUser(tok *oauth2.Token) (*GoogleUser, error) {
 
 	user := &GoogleUser{}
 	return user, json.Unmarshal(data, user)
+}
 
+// loginUser upserts a user
+func (self *GoogleAuthMethods) loginUser(user *GoogleUser) *cass.UpsertResult {
+	return self.CassClient.CreateUser(user.ToCass(), cass.Google, []byte(user.Sub), nil)
 }
 
 // HandleAuth handles redirect w/ state & code params. validate state & exchange code for user
 func (self *GoogleAuthMethods) HandleAuth(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	params := r.URL.Query()
+
+	codes, okcode := params["code"]
+	states, okstate := params["state"]
+
+	if !okstate || !okcode {
+		err := &validator.RequestErr{Status: http.StatusBadRequest, Message: "requires state & code params"}
+		err.Flush(rw)
+		return
+	}
+
+	token, exchangeErr := self.exchange(states[0], codes[0])
+
+	if exchangeErr != nil {
+		err := &validator.RequestErr{Status: http.StatusInternalServerError, Message: exchangeErr.Error()}
+		err.Flush(rw)
+		return
+	}
+
+	googleUser, userExchangeErr := self.getUser(token)
+
+	if userExchangeErr != nil {
+		err := &validator.RequestErr{Status: http.StatusInternalServerError, Message: userExchangeErr.Error()}
+		err.Flush(rw)
+		return
+	}
+
+	res := self.loginUser(googleUser)
+
+	if res.Err != nil {
+		err := &validator.RequestErr{Status: http.StatusInternalServerError, Message: res.Err.Error()}
+		err.Flush(rw)
+		return
+	}
+
+	rw.Write([]byte("created user"))
+
 }
 
 // RedirectToGoogle generates a state & redirects to the correct google login endpoint
@@ -143,19 +186,34 @@ func ValidateState(decoder *crypt.OmniCrypter, sig string) error {
 
 type GoogleUser struct {
 	Sub           string `json:"sub"`
-	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
 	Picture       string `json:"picture"`
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Gender        string `json:"gender"`
 }
 
+func (self *GoogleUser) ToCass() *cass.User {
+	return &cass.User{
+		Email:            self.Email,
+		GivenName:        self.GivenName,
+		FamilyName:       self.FamilyName,
+		PublicPictureUrl: self.Picture,
+	}
+}
+
 func (self *GoogleAuthMethods) Router() *route.Router {
 	endpoints := []*route.Endpoint{
 		&route.Endpoint{
-			Method:   "GET",
+			Method:   http.MethodGet,
 			Handlers: []negroni.Handler{negroni.HandlerFunc(self.Redirect)},
 			SubPath:  "/init",
+		},
+		&route.Endpoint{
+			Method:   http.MethodGet,
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.HandleAuth)},
+			SubPath:  "/authorize",
 		},
 	}
 
