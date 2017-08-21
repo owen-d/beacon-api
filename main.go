@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	defaultConfigsDir = filepath.Join(os.Getenv("GOPATH"), "src/github.com/owen-d/beacon-api/conf/settings")
+	// for loading dev config
+	defaultConfigsDir = filepath.Join(os.Getenv("GOPATH"), "src/github.com/owen-d/beacon-api/conf/dev-settings")
 )
 
 func safeExit(e error) {
