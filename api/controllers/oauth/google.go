@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -8,7 +9,9 @@ import (
 	"fmt"
 	"github.com/owen-d/beacon-api/config"
 	"github.com/owen-d/beacon-api/lib/crypt"
+	"github.com/owen-d/beacon-api/lib/route"
 	"github.com/owen-d/beacon-api/lib/validator"
+	"github.com/urfave/negroni"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"io/ioutil"
@@ -20,17 +23,11 @@ const (
 	userinfoEndpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
 )
 
-func NewOAuthConf(vars *config.OAuth, env string) *oauth2.Config {
-	var redirectUri string
-	if env == "production" {
-		redirectUri = vars.RedirectUris.Prod
-	} else {
-		redirectUri = vars.RedirectUris.Dev
-	}
+func NewOAuthConf(vars *config.OAuth) *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     vars.ClientID,
 		ClientSecret: vars.ClientSecret,
-		RedirectURL:  redirectUri,
+		RedirectURL:  vars.RedirectUri,
 		Scopes:       vars.Scopes,
 		Endpoint:     google.Endpoint,
 	}
@@ -38,6 +35,7 @@ func NewOAuthConf(vars *config.OAuth, env string) *oauth2.Config {
 
 type GoogleAuth interface {
 	HandleAuth(http.ResponseWriter, *http.Request, http.HandlerFunc)
+	Redirect(http.ResponseWriter, *http.Request, http.HandlerFunc)
 }
 
 type GoogleAuthMethods struct {
@@ -81,8 +79,8 @@ func (self *GoogleAuthMethods) HandleAuth(rw http.ResponseWriter, r *http.Reques
 }
 
 // RedirectToGoogle generates a state & redirects to the correct google login endpoint
-func (self *GoogleAuthMethods) RedirectToGoogle(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	state, stateErr := Genstate(self.Coder)
+func (self *GoogleAuthMethods) Redirect(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	state, stateErr := GenState(self.Coder)
 	if stateErr != nil {
 		err := &validator.RequestErr{Status: 500, Message: stateErr.Error()}
 		err.Flush(rw)
@@ -100,15 +98,18 @@ func GenState(encoder *crypt.OmniCrypter) (string, error) {
 	// default to 5 minutes
 	expiry := time.Now().Add(time.Minute * 10).Unix()
 
-	var msgBuf []byte
-	binary.PutUvarint(msgBuf, expiry)
-	encrypted, err := encoder.encrypt(msgBuf)
+	// 64 bit int = 8 bytes (assuming there isn't some leading/trailing identifiers)
+	// we then add 1 byte, to facilitate 'variable-length encoding'
+	// see https://medium.com/go-walkthrough/go-walkthrough-encoding-binary-96dc5d4abb5d
+	msgBuf := make([]byte, 9)
+	binary.PutVarint(msgBuf, expiry)
+	encrypted, err := encoder.Encrypt(msgBuf)
 
 	if err != nil {
 		return "", err
 	}
 
-	return hex.EncodeToString(msgBuf), nil
+	return hex.EncodeToString(encrypted), nil
 }
 
 func ValidateState(decoder *crypt.OmniCrypter, sig string) error {
@@ -119,20 +120,20 @@ func ValidateState(decoder *crypt.OmniCrypter, sig string) error {
 	}
 
 	// decrypt
-	decrypted, decryptErr := decoder.decrypt(buf)
+	decrypted, decryptErr := decoder.Decrypt(buf)
 	if decryptErr != nil {
 		return decryptErr
 	}
 
 	// time validation
-	expiry, expiryErr := binary.ReadVarint(decrypted)
+	expiry, expiryErr := binary.ReadVarint(bytes.NewReader(decrypted))
 
 	if expiryErr != nil {
 		return expiryErr
 	}
 
 	// expiry check
-	if time.Now().After(time.Unix(expiry)) {
+	if time.Now().After(time.Unix(expiry, 0)) {
 		return errors.New("state expired")
 	} else {
 		return nil
@@ -147,4 +148,22 @@ type GoogleUser struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Gender        string `json:"gender"`
+}
+
+func (self *GoogleAuthMethods) Router() *route.Router {
+	endpoints := []*route.Endpoint{
+		&route.Endpoint{
+			Method:   "GET",
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.Redirect)},
+			SubPath:  "/init",
+		},
+	}
+
+	r := route.Router{
+		Path:      "/auth/google",
+		Endpoints: endpoints,
+		Name:      "beaconRouter",
+	}
+
+	return &r
 }

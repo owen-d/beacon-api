@@ -21,9 +21,9 @@ type JsonConfig struct {
 type OAuth struct {
 	ClientID     string   `json:"client_id`
 	ClientSecret string   `json:"client_secret"`
-	RedirectUris []string `json:"redirect_uris"`
+	RedirectUri  string   `json:"redirect_uri"`
 	Scopes       []string `json:"scopes"`
-	StateCipher  string
+	StateKey     string   `json:"state_key"`
 }
 
 func LoadConfFromDir(fPath string) (*JsonConfig, error) {

@@ -30,7 +30,7 @@ func NewOmniCrypter(key string) (*OmniCrypter, error) {
 	return &OmniCrypter{secretKey}, nil
 }
 
-func (self *OmniCrypter) encrypt(msg []byte) ([]byte, error) {
+func (self *OmniCrypter) Encrypt(msg []byte) ([]byte, error) {
 	// You must use a different nonce for each message you encrypt with the
 	// same key. Since the nonce here is 192 bits long, a random value
 	// provides a sufficiently small probability of repeats.
@@ -44,7 +44,7 @@ func (self *OmniCrypter) encrypt(msg []byte) ([]byte, error) {
 	return secretbox.Seal(nonce[:], msg, &nonce, &self.SecretKey), nil
 }
 
-func (self *OmniCrypter) decrypt(encrypted []byte) ([]byte, error) {
+func (self *OmniCrypter) Decrypt(encrypted []byte) ([]byte, error) {
 	// When you decrypt, you must use the same nonce and key you used to
 	// encrypt the message. One way to achieve this is to store the nonce
 	// alongside the encrypted message. Above, we stored the nonce in the first
