@@ -11,7 +11,7 @@ import (
 // interface for exported functionality
 type Client interface {
 	// Users
-	CreateUser(*User, *gocql.Batch) *UpsertResult
+	CreateUser(*User, providerId, []byte, *gocql.Batch) *UpsertResult
 	FetchUser(*User) (*User, error)
 	// Beacons
 	CreateBeacons([]*Beacon, *gocql.Batch) *UpsertResult
@@ -37,11 +37,6 @@ type Client interface {
 const (
 	DefaultLimit = 250
 )
-
-type User struct {
-	Id    *gocql.UUID `cql:"id"`
-	Email string      `cql:"email"`
-}
 
 type Beacon struct {
 	UserId     *gocql.UUID `cql:"user_id" json:"user_id"`
@@ -163,49 +158,6 @@ func Connect(cluster *gocql.ClusterConfig, keyspace string) (*CassClient, error)
 	}
 
 	return &CassClient{Sess: session}, nil
-}
-
-// Users ------------------------------------------------------------------------------
-
-func (self *CassClient) CreateUser(u *User, batch *gocql.Batch) *UpsertResult {
-	uuid, _ := gocql.RandomUUID()
-	template := `INSERT INTO users (id, email) VALUES (?, ?)`
-	args := []interface{}{
-		&uuid,
-		u.Email,
-	}
-
-	if batch != nil {
-		batch.Query(template, args...)
-		return &UpsertResult{Batch: batch, Err: nil}
-	} else {
-		return &UpsertResult{
-			Batch: nil,
-			Err:   self.Sess.Query(template, args...).Exec(),
-		}
-	}
-
-}
-
-func (self *CassClient) FetchUser(u *User) (*User, error) {
-	// instantiate user struct for unmarshalling
-	matchedUser := &User{}
-	var err error
-	if u.Id != nil {
-		err = self.Sess.Query(`SELECT id, email FROM users WHERE id = ?`, u.Id).Scan(&matchedUser.Id, &matchedUser.Email)
-	} else {
-		err = self.Sess.Query(`SELECT id, email FROM users_by_email WHERE email = ?`, u.Email).Scan(&matchedUser.Id, &matchedUser.Email)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	if matchedUser.Id != nil {
-		return matchedUser, nil
-	} else {
-		return nil, errors.New("no matched user")
-	}
 }
 
 // Beacons ------------------------------------------------------------------------------

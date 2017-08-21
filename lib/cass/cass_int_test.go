@@ -1,6 +1,7 @@
 package cass
 
 import (
+	"encoding/hex"
 	"github.com/gocql/gocql"
 	"log"
 	"testing"
@@ -9,9 +10,12 @@ import (
 const (
 	prepopId    = "6ba7b810-9dad-11d1-80b4-00c04fd430c9"
 	prepopEmail = "int-test.email@gmail.com"
-	prepopBName = "00000000000000000000000000000000"
 	prepopMName = "first_msg"
 	prepopDName = "dep1"
+)
+
+var (
+	prepopBName, _ = hex.DecodeString("00000000000000000000000000000000")
 )
 
 // need to be able to call subtest on cmd.
@@ -46,90 +50,6 @@ func TestFulfillsInterface(t *testing.T) {
 	var _ Client = createLocalhostClient("bkn")
 }
 
-func TestCreateUser(t *testing.T) {
-	client := createLocalhostClient("bkn")
-	defer client.Sess.Close()
-
-	t.Run("Individual", func(t *testing.T) {
-		uuid, _ := gocql.RandomUUID()
-		newUser := User{
-			Id:    &uuid,
-			Email: "newEmail@provider.com",
-		}
-		res := client.CreateUser(&newUser, nil)
-		if res.Err != nil {
-			t.Fail()
-		}
-	})
-	t.Run("Batch", func(t *testing.T) {
-		uuid, _ := gocql.RandomUUID()
-		newUser := User{
-			Id:    &uuid,
-			Email: "newEmail-batch@provider.com",
-		}
-		batch := gocql.NewBatch(gocql.LoggedBatch)
-		res := client.CreateUser(&newUser, batch)
-
-		// check size
-		if res.Batch.Size() != 1 {
-			t.Error("batch has incorerct # of statements:")
-		}
-
-		testBatch(t, res, client, batch)
-
-	})
-}
-
-func TestFetchUser(t *testing.T) {
-	client := createLocalhostClient("bkn")
-	defer client.Sess.Close()
-
-	t.Run("uuid", func(t *testing.T) {
-		// propulated user id
-		uuid, parseErr := gocql.ParseUUID(prepopId)
-
-		if parseErr != nil {
-			t.Error("failed parsing uuid")
-			return
-		}
-
-		user := User{
-			Id: &uuid,
-		}
-
-		foundUser, fetchErr := client.FetchUser(&user)
-
-		if fetchErr != nil {
-			t.Error("failed fetching user", fetchErr)
-			return
-		}
-
-		if foundUser == nil {
-			t.Error("failed to match user")
-			return
-		}
-
-	})
-
-	t.Run("email", func(t *testing.T) {
-		user := User{
-			Email: prepopEmail,
-		}
-
-		foundUser, fetchErr := client.FetchUser(&user)
-
-		if fetchErr != nil {
-			t.Error("failed fetching user", fetchErr)
-			return
-		}
-
-		if foundUser == nil {
-			t.Error("failed to match user")
-			return
-		}
-	})
-}
-
 func TestCreateBeacons(t *testing.T) {
 	client := createLocalhostClient("bkn")
 	defer client.Sess.Close()
@@ -139,11 +59,11 @@ func TestCreateBeacons(t *testing.T) {
 		bkns := []*Beacon{
 			&Beacon{
 				UserId: &uuid,
-				Name:   "testcreate-1",
+				Name:   []byte("testcreate-1"),
 			},
 			&Beacon{
 				UserId: &uuid,
-				Name:   "testcreate-2",
+				Name:   []byte("testcreate-2"),
 			},
 		}
 
@@ -158,11 +78,11 @@ func TestCreateBeacons(t *testing.T) {
 		bkns := []*Beacon{
 			&Beacon{
 				UserId: &uuid,
-				Name:   "testcreate-b-1",
+				Name:   []byte("testcreate-b-1"),
 			},
 			&Beacon{
 				UserId: &uuid,
-				Name:   "testcreate-b-2",
+				Name:   []byte("testcreate-b-2"),
 			},
 		}
 
@@ -409,7 +329,7 @@ func TestPostDeployment(t *testing.T) {
 			UserId:      &uuid,
 			DeployName:  "test-full-deployment",
 			MessageName: prepopMName,
-			BeaconNames: []string{prepopBName},
+			BeaconNames: [][]byte{prepopBName},
 		}
 
 		res := client.PostDeployment(&dep)
@@ -423,7 +343,7 @@ func TestPostDeployment(t *testing.T) {
 			UserId:      &uuid,
 			DeployName:  "test-full-deployment",
 			MessageName: "deploytest-message-name-invalid",
-			BeaconNames: []string{prepopBName},
+			BeaconNames: [][]byte{prepopBName},
 		}
 
 		res := client.PostDeployment(&dep)
@@ -436,7 +356,7 @@ func TestPostDeployment(t *testing.T) {
 		dep := Deployment{
 			UserId:      &uuid,
 			DeployName:  "test-full-deployment",
-			BeaconNames: []string{prepopBName},
+			BeaconNames: [][]byte{prepopBName},
 			Message: &Message{
 				Name:  "deploytest-new-msg",
 				Title: "hi",
