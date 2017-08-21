@@ -19,7 +19,7 @@ type JsonConfig struct {
 }
 
 type OAuth struct {
-	ClientID     string   `json:"client_id`
+	ClientID     string   `json:"client_id"`
 	ClientSecret string   `json:"client_secret"`
 	RedirectUri  string   `json:"redirect_uri"`
 	Scopes       []string `json:"scopes"`
