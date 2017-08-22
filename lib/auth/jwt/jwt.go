@@ -102,9 +102,10 @@ type Encoder struct {
 }
 
 // Encode can be used to via enc.Encode(userIdString, time.Now().Add(time.Hour * 24 * 30).Unix())
-func (self *Encoder) Encode(userId gocql.UUID, expires int64) (string, error) {
+func (self *Encoder) Encode(userId [16]byte, expires int64) (string, error) {
+	uuid, _ := gocql.UUIDFromBytes((&userId)[:])
 	claims := jwtGo.MapClaims{
-		"user_id": userId,
+		"user_id": uuid.String(),
 		"exp":     expires,
 		"iat":     time.Now().Unix(),
 	}

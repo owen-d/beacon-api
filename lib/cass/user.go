@@ -28,20 +28,21 @@ var (
 )
 
 type User struct {
-	Id               *gocql.UUID `cql:"id"`
-	Email            string      `cql:"email"`
-	CreatedAt        time.Time   `cql:"created_at"`
-	UpdatedAt        time.Time   `cql:"updated_at"`
-	ProviderId       uint8       `cql:"provider_id"`
-	GivenName        string      `cql:"given_name"`
-	FamilyName       string      `cql:"family_name"`
-	PublicPictureUrl string      `cql:"public_picture_url`
+	Id               *gocql.UUID `cql:"id" json:"id"`
+	Email            string      `cql:"email" json:"email"`
+	CreatedAt        time.Time   `cql:"created_at" json:"-"`
+	UpdatedAt        time.Time   `cql:"updated_at" json:"-"`
+	ProviderId       uint8       `cql:"provider_id" json:"-"`
+	GivenName        string      `cql:"given_name" json:"given_name"`
+	FamilyName       string      `cql:"family_name" json:"family_name"`
+	PublicPictureUrl string      `cql:"public_picture_url json:"public_picture_url"`
 }
 
 func (self *CassClient) CreateUser(u *User, provider providerId, providerKey []byte, batch *gocql.Batch) *UpsertResult {
 
 	uuidBytes := provider.UUIDFromBytes(providerKey)
 	uuid, uuidErr := gocql.UUIDFromBytes((&uuidBytes)[:])
+	u.Id = &uuid
 
 	// earl return for uuid generation errors
 	if uuidErr != nil {

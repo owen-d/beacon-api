@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/owen-d/beacon-api/config"
+	"github.com/owen-d/beacon-api/lib/auth/jwt"
 	"github.com/owen-d/beacon-api/lib/cass"
 	"github.com/owen-d/beacon-api/lib/crypt"
 	"github.com/owen-d/beacon-api/lib/route"
@@ -43,6 +43,7 @@ type GoogleAuthMethods struct {
 	OAuth      *oauth2.Config
 	Coder      *crypt.OmniCrypter
 	CassClient cass.Client
+	JWTEncoder *jwt.Encoder
 }
 
 // Exchange validates a state string & exchanges the code for a token
@@ -65,7 +66,6 @@ func (self *GoogleAuthMethods) getUser(tok *oauth2.Token) (*GoogleUser, error) {
 	defer resp.Body.Close()
 
 	data, readErr := ioutil.ReadAll(resp.Body)
-	fmt.Printf(string(data))
 
 	if readErr != nil {
 		return nil, readErr
@@ -76,8 +76,9 @@ func (self *GoogleAuthMethods) getUser(tok *oauth2.Token) (*GoogleUser, error) {
 }
 
 // loginUser upserts a user
-func (self *GoogleAuthMethods) loginUser(user *GoogleUser) *cass.UpsertResult {
-	return self.CassClient.CreateUser(user.ToCass(), cass.Google, []byte(user.Sub), nil)
+func (self *GoogleAuthMethods) loginUser(user *GoogleUser) (*cass.UpsertResult, *cass.User) {
+	cassUser := user.ToCass()
+	return self.CassClient.CreateUser(cassUser, cass.Google, []byte(user.Sub), nil), cassUser
 }
 
 // HandleAuth handles redirect w/ state & code params. validate state & exchange code for user
@@ -109,7 +110,7 @@ func (self *GoogleAuthMethods) HandleAuth(rw http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	res := self.loginUser(googleUser)
+	res, cassUser := self.loginUser(googleUser)
 
 	if res.Err != nil {
 		err := &validator.RequestErr{Status: http.StatusInternalServerError, Message: res.Err.Error()}
@@ -117,7 +118,20 @@ func (self *GoogleAuthMethods) HandleAuth(rw http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	rw.Write([]byte("created user"))
+	// 1 year jwt expiry
+	newJwt, jwtErr := self.JWTEncoder.Encode(*cassUser.Id, time.Now().Add(time.Hour*24*365).Unix())
+
+	if jwtErr != nil {
+		err := &validator.RequestErr{Status: http.StatusInternalServerError, Message: "error issuing jwt"}
+		err.Flush(rw)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+
+	data, _ := json.Marshal(&LoginResponse{newJwt, cassUser})
+	rw.Write(data)
 
 }
 
@@ -201,6 +215,11 @@ func (self *GoogleUser) ToCass() *cass.User {
 		FamilyName:       self.FamilyName,
 		PublicPictureUrl: self.Picture,
 	}
+}
+
+type LoginResponse struct {
+	Jwt  string     `json:"jwt"`
+	User *cass.User `json:"user"`
 }
 
 func (self *GoogleAuthMethods) Router() *route.Router {

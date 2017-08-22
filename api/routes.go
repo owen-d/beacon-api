@@ -26,6 +26,7 @@ type Env struct {
 func (self *Env) Init() http.Handler {
 
 	JWTDecoder := jwt.Decoder{[]byte(self.Conf.JWTSecret)}
+	JWTEncoder := jwt.Encoder{[]byte(self.Conf.JWTSecret)}
 
 	httpClient := beaconclient.JWTConfigFromJSON(self.Conf.GCloudConfigPath, self.Conf.Scope)
 	svc, bknClientErr := beaconclient.NewBeaconClient(httpClient)
@@ -43,6 +44,7 @@ func (self *Env) Init() http.Handler {
 		OAuth:      oauth.NewOAuthConf(&self.Conf.GoogleOAuth),
 		Coder:      googleCrypter,
 		CassClient: cassClient,
+		JWTEncoder: &JWTEncoder,
 	}
 
 	v1Router := &route.Router{
