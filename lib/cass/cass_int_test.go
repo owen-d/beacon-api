@@ -167,6 +167,33 @@ func TestCreateMessage(t *testing.T) {
 	})
 }
 
+func TestUpdateMessage(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+	msg := Message{
+		UserId: &uuid,
+		Name:   prepopMName,
+		Title:  "newtitle",
+		Url:    "http://newurl.sharecro.ws",
+	}
+
+	t.Run("update", func(t *testing.T) {
+		res := client.UpdateMessage(&msg, nil)
+		if res.Err != nil {
+			t.Error("failed to update msg:", res.Err)
+		}
+	})
+	t.Run("update-batch", func(t *testing.T) {
+		batch := gocql.NewBatch(gocql.LoggedBatch)
+		res := client.UpdateMessage(&msg, batch)
+
+		testBatch(t, res, client, batch)
+	})
+
+}
+
 func TestChangeMessageDeployments(t *testing.T) {
 	client := createLocalhostClient("bkn")
 	defer client.Sess.Close()

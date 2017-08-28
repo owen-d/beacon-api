@@ -301,6 +301,26 @@ func (self *CassClient) CreateMessage(m *Message, batch *gocql.Batch) *UpsertRes
 	}
 }
 
+func (self *CassClient) UpdateMessage(m *Message, batch *gocql.Batch) *UpsertResult {
+	template := `UPDATE messages SET title = ?, url = ? WHERE user_id = ? AND name = ?`
+	args := []interface{}{
+		m.Title,
+		m.Url,
+		m.UserId,
+		m.Name,
+	}
+
+	if batch != nil {
+		batch.Query(template, args...)
+		return &UpsertResult{Batch: batch, Err: nil}
+	} else {
+		return &UpsertResult{
+			Batch: nil,
+			Err:   self.Sess.Query(template, args...).Exec(),
+		}
+	}
+}
+
 func (self *CassClient) AddMessageDeployments(m *Message, additions []string, batch *gocql.Batch) *UpsertResult {
 	return self.addOrRemoveMessageDeployments(m, additions, true, batch)
 }
