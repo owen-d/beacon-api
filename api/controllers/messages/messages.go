@@ -70,6 +70,43 @@ func (self *IncomingMessage) ToCass() (*cass.Message, error) {
 	return cassMsg, nil
 }
 
+func (self *MessageMethods) UpdateMessage(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	msg := &IncomingMessage{}
+
+	// validation blocks
+	if invalid := msg.Validate(r); invalid != nil {
+		invalid.Flush(rw)
+		next(rw, r)
+		return
+	}
+
+	cassMsg, castErr := msg.ToCass()
+
+	if castErr != nil {
+		err := &validator.RequestErr{500, castErr.Error()}
+		err.Flush(rw)
+		next(rw, r)
+		return
+	}
+
+	if cassMsg.Name == "" {
+		err := &validator.RequestErr{http.StatusBadRequest, "invalid name"}
+		err.Flush(rw)
+		next(rw, r)
+		return
+	}
+
+	// update row
+	res := self.CassClient.UpdateMessage(cassMsg, nil)
+
+	if res.Err != nil {
+		err := &validator.RequestErr{500, res.Err.Error()}
+		err.Flush(rw)
+		next(rw, r)
+		return
+	}
+}
+
 func (self *MessageMethods) PostMessage(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	msg := &IncomingMessage{}
 
@@ -125,6 +162,14 @@ func (self *MessageMethods) Router() *route.Router {
 		&route.Endpoint{
 			Method:   "GET",
 			Handlers: []negroni.Handler{negroni.HandlerFunc(self.FetchMessages)},
+		},
+		&route.Endpoint{
+			Method:   "POST",
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.PostMessage)},
+		},
+		&route.Endpoint{
+			Method:   "PUT",
+			Handlers: []negroni.Handler{negroni.HandlerFunc(self.UpdateMessage)},
 		},
 	}
 

@@ -20,6 +20,7 @@ type Client interface {
 	FetchUserBeacons(*gocql.UUID) ([]*Beacon, error)
 	// Messages
 	CreateMessage(*Message, *gocql.Batch) *UpsertResult
+	UpdateMessage(*Message, *gocql.Batch) *UpsertResult
 	AddMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
 	RemoveMessageDeployments(*Message, []string, *gocql.Batch) *UpsertResult
 	FetchMessage(*Message) (*Message, error)
