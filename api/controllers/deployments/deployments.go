@@ -10,7 +10,6 @@ import (
 	"github.com/owen-d/beacon-api/lib/route"
 	"github.com/owen-d/beacon-api/lib/validator"
 	"github.com/urfave/negroni"
-	"google.golang.org/api/proximitybeacon/v1beta1"
 	"io/ioutil"
 	"net/http"
 )
@@ -91,59 +90,12 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 		Title: cassDep.Message.Title,
 		Url:   cassDep.Message.Url,
 	}
-	attachmentResults := self.postAttachments(cass.MapBytesToHex(cassDep.BeaconNames), attachment)
+	attachmentResults := self.BeaconClient.DeclarativeAttach(cass.MapBytesToHex(cassDep.BeaconNames), attachment)
 
 	rw.WriteHeader(http.StatusCreated)
 
 	data, _ := json.Marshal(attachmentResults)
 	rw.Write(data)
-}
-
-// AttachmentResult is a wrapper type hol,ding response data from google beacon platform about attachment deletions and creations
-type AttachmentResult struct {
-	Name       string
-	Err        error
-	Attachment *proximitybeacon.BeaconAttachment `json:-`
-}
-
-// postAttachments is a private method which deletes & re-adds attachments to a beacon registered in google's beacon platform
-func (self *DeploymentMethods) postAttachments(bNames []string, attachment *beaconclient.AttachmentData) []*AttachmentResult {
-	res := make([]*AttachmentResult, 0, len(bNames))
-
-	ch := make(chan *AttachmentResult)
-
-	// delete old attachments & apply new one
-	for _, bName := range bNames {
-		go func(bName string, ch chan<- *AttachmentResult) {
-			resp := &AttachmentResult{Name: bName}
-
-			// remove old attachments on beacon
-			_, deleteErr := self.BeaconClient.BatchDeleteAttachments(bName)
-			if deleteErr != nil {
-				resp.Err = deleteErr
-				ch <- resp
-				return
-			}
-
-			postedAttachment, postErr := self.BeaconClient.CreateAttachment(bName, attachment)
-
-			if postErr != nil {
-				resp.Err = postErr
-				ch <- resp
-				return
-			} else {
-				resp.Attachment = postedAttachment
-				ch <- resp
-				return
-			}
-		}(bName, ch)
-	}
-
-	for range bNames {
-		res = append(res, <-ch)
-	}
-
-	return res
 }
 
 func (self *DeploymentMethods) FetchDeploymentsMetadata(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {

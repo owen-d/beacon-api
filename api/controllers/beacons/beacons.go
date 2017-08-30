@@ -106,6 +106,8 @@ func (self *BeaconMethods) ChangeDeployments(rw http.ResponseWriter, r *http.Req
 		(&validator.RequestErr{Status: 500, Message: additionRes.Err.Error()}).Flush(rw)
 		return
 	}
+
+	// iterate over affected beacons & update proximity api.
 }
 
 func (self *BeaconMethods) Router() *route.Router {

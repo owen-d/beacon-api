@@ -47,6 +47,7 @@ type Client interface {
 	GetAttachmentsForBeacon(name string) ([]*proximitybeacon.BeaconAttachment, error)
 	CreateAttachment(beaconName string, attachmentData *AttachmentData) (*proximitybeacon.BeaconAttachment, error)
 	BatchDeleteAttachments(beaconName string) (int64, error)
+	DeclarativeAttach([]string, *AttachmentData) []*AttachmentResult
 }
 
 type BeaconClient struct {
@@ -138,4 +139,56 @@ type AttachmentData struct {
 func (a *AttachmentData) encode() string {
 	jData, _ := json.Marshal(a)
 	return base64.StdEncoding.EncodeToString(jData)
+}
+
+// AttachmentResult is a wrapper type hol,ding response data from google beacon platform about attachment deletions and creations
+type AttachmentResult struct {
+	Name       string
+	Err        error
+	Attachment *proximitybeacon.BeaconAttachment `json:-`
+}
+
+func (self *BeaconClient) DeclarativeAttach(bNames []string, attachment *AttachmentData) []*AttachmentResult {
+	res := make([]*AttachmentResult, 0, len(bNames))
+
+	ch := make(chan *AttachmentResult)
+
+	// delete old attachments & apply new one
+	for _, bName := range bNames {
+		go func(bName string, ch chan<- *AttachmentResult) {
+			resp := &AttachmentResult{Name: bName}
+
+			// remove old attachments on beacon
+			_, deleteErr := self.BatchDeleteAttachments(bName)
+			if deleteErr != nil {
+				resp.Err = deleteErr
+				ch <- resp
+				return
+			}
+
+			// early return for nil attachments (functions as just the delete from prev step)
+			if attachment == nil {
+				ch <- resp
+				return
+			}
+
+			postedAttachment, postErr := self.CreateAttachment(bName, attachment)
+
+			if postErr != nil {
+				resp.Err = postErr
+				ch <- resp
+				return
+			} else {
+				resp.Attachment = postedAttachment
+				ch <- resp
+				return
+			}
+		}(bName, ch)
+	}
+
+	for range bNames {
+		res = append(res, <-ch)
+	}
+
+	return res
 }
