@@ -139,42 +139,55 @@ func (self *BeaconMethods) ChangeDeployments(rw http.ResponseWriter, r *http.Req
 func (self *BeaconMethods) handleDeploymentGroups(userId *gocql.UUID, depGrps map[string][]*cass.Beacon) ([]string, []error) {
 	resErrs := make([]error, 0)
 	attachResults := make([]*beaconclient.AttachmentResult, 0)
+	errCh := make(chan []error)
 
 	for depName, bkns := range depGrps {
-		// fetch metatdata & then msg
-		match, matchErr := self.CassClient.FetchDeploymentMetadata(userId, depName)
-		if matchErr != nil {
-			resErrs = append(resErrs, matchErr)
-			break
-		}
 
-		if match.MessageName == "" {
-			break
-		}
+		go func(depName string, bkns []*cass.Beacon, errCh chan<- []error) {
+			// fetch metadata & then msg
+			match, matchErr := self.CassClient.FetchDeploymentMetadata(userId, depName)
+			if matchErr != nil {
+				errCh <- []error{matchErr}
+				return
+			}
 
-		msg, msgErr := self.CassClient.FetchMessage(&cass.Message{
-			UserId: userId,
-			Name:   match.MessageName,
-		})
+			if match.MessageName == "" {
+				errCh <- nil
+				return
+			}
 
-		if msgErr != nil {
-			resErrs = append(resErrs, msgErr)
-			break
-		}
+			msg, msgErr := self.CassClient.FetchMessage(&cass.Message{
+				UserId: userId,
+				Name:   match.MessageName,
+			})
 
-		attachment := &beaconclient.AttachmentData{
-			Title: msg.Title,
-			Url:   msg.Url,
-		}
+			if msgErr != nil {
+				errCh <- []error{msgErr}
+				return
+			}
 
-		bknNames := make([][]byte, 0)
-		for _, bkn := range bkns {
-			bknNames = append(bknNames, bkn.Name)
-		}
+			// update attachments
+			attachment := &beaconclient.AttachmentData{
+				Title: msg.Title,
+				Url:   msg.Url,
+			}
 
-		results := self.BeaconClient.DeclarativeAttach(cass.MapBytesToHex(bknNames), attachment)
-		attachResults = append(attachResults, results...)
+			bknNames := make([][]byte, 0)
+			for _, bkn := range bkns {
+				bknNames = append(bknNames, bkn.Name)
+			}
 
+			results := self.BeaconClient.DeclarativeAttach(cass.MapBytesToHex(bknNames), attachment)
+			resultsErrs := make([]error, 0)
+			for _, attachRes := range results {
+				if attachRes.Err != nil {
+					resultsErrs = append(resultsErrs, attachRes.Err)
+				}
+			}
+			errCh <- resultsErrs
+			return
+
+		}(depName, bkns, errCh)
 	}
 
 	successes := make([]string, 0)
