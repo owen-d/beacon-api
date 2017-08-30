@@ -118,7 +118,8 @@ func (self *BeaconMethods) ChangeDeployments(rw http.ResponseWriter, r *http.Req
 
 	// iterate over affected beacons & update proximity api.
 	bindings := r.Context().Value(jwt.JWTNamespace).(*jwt.Bindings)
-	attached, errs := self.handleDeploymentGroups(bindings.UserId, deploymentGrps)
+	errCh := self.handleDeploymentGroups(bindings.UserId, deploymentGrps)
+	errs := <-errCh
 
 	rw.Header().Set("Content-Type", "application/json")
 
@@ -129,19 +130,18 @@ func (self *BeaconMethods) ChangeDeployments(rw http.ResponseWriter, r *http.Req
 	}
 
 	data, _ := json.Marshal(struct {
-		Attached []string `json:"attached"`
-		Errors   []error  `json:"errors"`
-	}{attached, errs})
+		Errors []error `json:"errors"`
+	}{errs})
 
 	rw.Write(data)
 }
 
-func (self *BeaconMethods) handleDeploymentGroups(userId *gocql.UUID, depGrps map[string][]*cass.Beacon) ([]string, []error) {
-	resErrs := make([]error, 0)
-	attachResults := make([]*beaconclient.AttachmentResult, 0)
+func (self *BeaconMethods) handleDeploymentGroups(userId *gocql.UUID, depGrps map[string][]*cass.Beacon) chan []error {
 	errCh := make(chan []error)
+	keyLength := 0
 
 	for depName, bkns := range depGrps {
+		keyLength++
 
 		go func(depName string, bkns []*cass.Beacon, errCh chan<- []error) {
 			// fetch metadata & then msg
@@ -190,16 +190,18 @@ func (self *BeaconMethods) handleDeploymentGroups(userId *gocql.UUID, depGrps ma
 		}(depName, bkns, errCh)
 	}
 
-	successes := make([]string, 0)
-	for _, attachResult := range attachResults {
-		if attachResult.Err != nil {
-			resErrs = append(resErrs, attachResult.Err)
-		} else {
-			successes = append(successes, attachResult.Name)
+	resCh := make(chan []error)
+	go func() {
+		accumulatedErrs := make([]error, 0)
+		for i := 0; i < keyLength; i++ {
+			newErrs := <-errCh
+			accumulatedErrs = append(accumulatedErrs, newErrs...)
 		}
-	}
+		resCh <- accumulatedErrs
+	}()
 
-	return successes, resErrs
+	return resCh
+
 }
 
 func (self *BeaconMethods) Router() *route.Router {
