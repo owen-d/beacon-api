@@ -2,6 +2,7 @@ package beacons
 
 import (
 	"encoding/json"
+	"github.com/gocql/gocql"
 	"github.com/owen-d/beacon-api/lib/auth/jwt"
 	"github.com/owen-d/beacon-api/lib/beaconclient"
 	"github.com/owen-d/beacon-api/lib/cass"
@@ -85,12 +86,20 @@ func (self *BeaconMethods) ChangeDeployments(rw http.ResponseWriter, r *http.Req
 
 	additions := make([]*cass.Beacon, 0)
 	removals := make([]*cass.Beacon, 0)
+	deploymentGrps := make(map[string][]*cass.Beacon)
 
 	for _, bkn := range bkns {
 		if bkn.DeployName == "" {
 			removals = append(removals, bkn)
 		} else {
 			additions = append(additions, bkn)
+			// add the beacon to the correct deployment grouping
+			slice, ok := deploymentGrps[bkn.DeployName]
+			if ok {
+				slice = append(slice, bkn)
+			} else {
+				slice = []*cass.Beacon{bkn}
+			}
 		}
 	}
 
@@ -108,6 +117,76 @@ func (self *BeaconMethods) ChangeDeployments(rw http.ResponseWriter, r *http.Req
 	}
 
 	// iterate over affected beacons & update proximity api.
+	bindings := r.Context().Value(jwt.JWTNamespace).(*jwt.Bindings)
+	attached, errs := self.handleDeploymentGroups(bindings.UserId, deploymentGrps)
+
+	rw.Header().Set("Content-Type", "application/json")
+
+	if len(errs) != 0 {
+		rw.WriteHeader(http.StatusInternalServerError)
+	} else {
+		rw.WriteHeader(http.StatusOK)
+	}
+
+	data, _ := json.Marshal(struct {
+		Attached []string `json:"attached"`
+		Errors   []error  `json:"errors"`
+	}{attached, errs})
+
+	rw.Write(data)
+}
+
+func (self *BeaconMethods) handleDeploymentGroups(userId *gocql.UUID, depGrps map[string][]*cass.Beacon) ([]string, []error) {
+	resErrs := make([]error, 0)
+	attachResults := make([]*beaconclient.AttachmentResult, 0)
+
+	for depName, bkns := range depGrps {
+		// fetch metatdata & then msg
+		match, matchErr := self.CassClient.FetchDeploymentMetadata(userId, depName)
+		if matchErr != nil {
+			resErrs = append(resErrs, matchErr)
+			break
+		}
+
+		if match.MessageName == "" {
+			break
+		}
+
+		msg, msgErr := self.CassClient.FetchMessage(&cass.Message{
+			UserId: userId,
+			Name:   match.MessageName,
+		})
+
+		if msgErr != nil {
+			resErrs = append(resErrs, msgErr)
+			break
+		}
+
+		attachment := &beaconclient.AttachmentData{
+			Title: msg.Title,
+			Url:   msg.Url,
+		}
+
+		bknNames := make([][]byte, 0)
+		for _, bkn := range bkns {
+			bknNames = append(bknNames, bkn.Name)
+		}
+
+		results := self.BeaconClient.DeclarativeAttach(cass.MapBytesToHex(bknNames), attachment)
+		attachResults = append(attachResults, results...)
+
+	}
+
+	successes := make([]string, 0)
+	for _, attachResult := range attachResults {
+		if attachResult.Err != nil {
+			resErrs = append(resErrs, attachResult.Err)
+		} else {
+			successes = append(successes, attachResult.Name)
+		}
+	}
+
+	return successes, resErrs
 }
 
 func (self *BeaconMethods) Router() *route.Router {
