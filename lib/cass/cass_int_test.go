@@ -110,6 +110,22 @@ func TestUpdateBeacons(t *testing.T) {
 	}
 }
 
+func TestRemoveBeaconsDeployments(t *testing.T) {
+	client := createLocalhostClient("bkn")
+	defer client.Sess.Close()
+
+	uuid, _ := gocql.ParseUUID(prepopId)
+	bkn := Beacon{
+		UserId: &uuid,
+		Name:   prepopBName,
+	}
+
+	res := client.UpdateBeacons([]*Beacon{&bkn})
+	if res.Err != nil {
+		t.Error("failed to create beacons: %v", res.Err)
+	}
+}
+
 func TestFetchBeacon(t *testing.T) {
 	client := createLocalhostClient("bkn")
 	defer client.Sess.Close()

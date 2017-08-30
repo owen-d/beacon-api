@@ -15,6 +15,7 @@ type Client interface {
 	FetchUser(*User) (*User, error)
 	// Beacons
 	CreateBeacons([]*Beacon, *gocql.Batch) *UpsertResult
+	RemoveBeaconsDeployments(beacons []*Beacon) *UpsertResult
 	UpdateBeacons([]*Beacon) *UpsertResult
 	FetchBeacon(*Beacon) (*Beacon, error)
 	FetchUserBeacons(*gocql.UUID) ([]*Beacon, error)
@@ -201,6 +202,42 @@ func (self *CassClient) UpdateBeacons(beacons []*Beacon) *UpsertResult {
 	for _, bkn := range beacons {
 		cmd := []interface{}{
 			bkn.DeployName,
+			bkn.UserId,
+			bkn.Name,
+		}
+
+		dispatch.Register(func() *UpsertResult {
+			return &UpsertResult{
+				Batch: nil,
+				Err:   self.Sess.Query(template, cmd...).Exec(),
+			}
+		})
+	}
+
+	for i := uint32(0); i < dispatch.Ct; i++ {
+		res := <-dispatch.Ch
+
+		if res.Err != nil {
+			return res
+		}
+	}
+
+	res := UpsertResult{
+		Err: nil,
+		// return nil batch b/c theres no collective batch
+		Batch: nil,
+	}
+
+	return &res
+
+}
+
+func (self *CassClient) RemoveBeaconsDeployments(beacons []*Beacon) *UpsertResult {
+	template := `DELETE deploy_name from beacons WHERE user_id = ? AND name = ? IF EXISTS`
+	dispatch := newDispatcher()
+
+	for _, bkn := range beacons {
+		cmd := []interface{}{
 			bkn.UserId,
 			bkn.Name,
 		}
