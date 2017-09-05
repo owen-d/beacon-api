@@ -44,6 +44,7 @@ type Beacon struct {
 	UserId     *gocql.UUID `cql:"user_id" json:"user_id"`
 	DeployName string      `cql:"deploy_name" json:"deploy_name"`
 	Name       []byte      `cql:"name"`
+	MsgUrl     string      `cql:"msg_url" json:"-"`
 }
 
 func (self *Beacon) MarshalJSON() ([]byte, error) {
@@ -196,12 +197,13 @@ func (self *CassClient) CreateBeacons(beacons []*Beacon, batch *gocql.Batch) *Up
 
 // UpdateBeacons must use an if exists clause to prevent errors like inserting a beacon which a user does not own.
 func (self *CassClient) UpdateBeacons(beacons []*Beacon) *UpsertResult {
-	template := `UPDATE beacons SET deploy_name = ? WHERE user_id = ? AND name = ? IF EXISTS`
+	template := `UPDATE beacons SET deploy_name = ?, msg_url = ? WHERE user_id = ? AND name = ? IF EXISTS`
 	dispatch := newDispatcher()
 
 	for _, bkn := range beacons {
 		cmd := []interface{}{
 			bkn.DeployName,
+			bkn.MsgUrl,
 			bkn.UserId,
 			bkn.Name,
 		}
@@ -546,6 +548,7 @@ func (self *CassClient) PostDeployment(deployment *Deployment) *UpsertResult {
 			UserId:     deployment.UserId,
 			DeployName: deployment.DeployName,
 			Name:       bName,
+			MsgUrl:     deployment.Message.Url,
 		}
 		bkns = append(bkns, &bkn)
 	}

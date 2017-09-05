@@ -12,4 +12,4 @@ ingress:
 
 api:
   repository: gcr.io/glassy-courage-146901/sharecrows-api
-  tag: 4bd6caef58da
+  tag: f8a8fcc9b097

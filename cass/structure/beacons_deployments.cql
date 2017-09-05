@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS bkn.beacons (
   name blob,
   created_at timestamp,
   updated_at timestamp,
+  msg_url varchar,
   manu_id blob,
   manu_key smallint,
   tags map<varchar, varchar>,

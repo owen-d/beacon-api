@@ -102,6 +102,7 @@ func TestUpdateBeacons(t *testing.T) {
 		UserId:     &uuid,
 		Name:       prepopBName,
 		DeployName: "non-batch-deploy",
+		MsgUrl:     "http://fake.url",
 	}
 
 	res := client.UpdateBeacons([]*Beacon{&bkn})
