@@ -26,3 +26,9 @@ AS SELECT user_id, deploy_name, name
 FROM bkn.beacons
 WHERE user_id IS NOT NULL AND deploy_name IS NOT NULL AND name IS NOT NULL
 PRIMARY KEY ((user_id, deploy_name), name);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS bkn.beacons_by_id
+AS SELECT user_id, msg_url, name
+FROM bkn.beacons
+WHERE user_id IS NOT NULL AND name IS NOT NULL
+PRIMARY KEY ((name), user_id);
