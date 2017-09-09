@@ -177,7 +177,7 @@ func (self *BeaconMethods) handleDeploymentGroups(userId *gocql.UUID, depGrps ma
 				bknNames = append(bknNames, bkn.Name)
 			}
 
-			results := self.BeaconClient.DeclarativeAttach(cass.MapBytesToHex(bknNames), attachment)
+			results := self.BeaconClient.DeclarativeAttach(bknNames, attachment)
 			resultsErrs := make([]error, 0)
 			for _, attachRes := range results {
 				if attachRes.Err != nil {

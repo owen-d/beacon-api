@@ -88,9 +88,9 @@ func (self *DeploymentMethods) PostDeployment(rw http.ResponseWriter, r *http.Re
 	// iterate over affected beacons, removing old attachment & creating new attachment
 	attachment := &beaconclient.AttachmentData{
 		Title: cassDep.Message.Title,
-		Url:   cassDep.Message.Url,
 	}
-	attachmentResults := self.BeaconClient.DeclarativeAttach(cass.MapBytesToHex(cassDep.BeaconNames), attachment)
+
+	attachmentResults := self.BeaconClient.DeclarativeAttach(cassDep.BeaconNames, attachment)
 
 	rw.WriteHeader(http.StatusCreated)
 

@@ -694,11 +694,3 @@ func mapBeaconNames(bkns []*Beacon) [][]byte {
 	}
 	return res
 }
-
-func MapBytesToHex(col [][]byte) []string {
-	names := make([]string, len(col))
-	for i, name := range col {
-		names[i] = hex.EncodeToString(name)
-	}
-	return names
-}

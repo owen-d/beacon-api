@@ -2,7 +2,9 @@ package beaconclient
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/proximitybeacon/v1beta1"
@@ -47,7 +49,7 @@ type Client interface {
 	GetAttachmentsForBeacon(name string) ([]*proximitybeacon.BeaconAttachment, error)
 	CreateAttachment(beaconName string, attachmentData *AttachmentData) (*proximitybeacon.BeaconAttachment, error)
 	BatchDeleteAttachments(beaconName string) (int64, error)
-	DeclarativeAttach([]string, *AttachmentData) []*AttachmentResult
+	DeclarativeAttach([][]byte, *AttachmentData) []*AttachmentResult
 }
 
 type BeaconClient struct {
@@ -148,18 +150,26 @@ type AttachmentResult struct {
 	Attachment *proximitybeacon.BeaconAttachment `json:-`
 }
 
-func (self *BeaconClient) DeclarativeAttach(bNames []string, attachment *AttachmentData) []*AttachmentResult {
+func (self *BeaconClient) DeclarativeAttach(bNames [][]byte, attachment *AttachmentData) []*AttachmentResult {
 	res := make([]*AttachmentResult, 0, len(bNames))
 
 	ch := make(chan *AttachmentResult)
 
 	// delete old attachments & apply new one
 	for _, bName := range bNames {
-		go func(bName string, ch chan<- *AttachmentResult) {
-			resp := &AttachmentResult{Name: bName}
+		go func(bName []byte, ch chan<- *AttachmentResult) {
+			// assign url altered url
+			strName := hex.EncodeToString(bName)
+			shortBknName := bName[len(bName)-6:]
+			alteredAttach := &AttachmentData{
+				Title: attachment.Title,
+				Url:   fmt.Sprint("https://our.sharecro.ws/bkn/", hex.EncodeToString(shortBknName)),
+			}
+
+			resp := &AttachmentResult{Name: strName}
 
 			// remove old attachments on beacon
-			_, deleteErr := self.BatchDeleteAttachments(bName)
+			_, deleteErr := self.BatchDeleteAttachments(strName)
 			if deleteErr != nil {
 				resp.Err = deleteErr
 				ch <- resp
@@ -172,7 +182,7 @@ func (self *BeaconClient) DeclarativeAttach(bNames []string, attachment *Attachm
 				return
 			}
 
-			postedAttachment, postErr := self.CreateAttachment(bName, attachment)
+			postedAttachment, postErr := self.CreateAttachment(strName, alteredAttach)
 
 			if postErr != nil {
 				resp.Err = postErr
